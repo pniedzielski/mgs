@@ -1,0 +1,35 @@
+name:                mgs
+version:             0.0.0.1
+github:              pniedzielski/mgs
+license:             BSD-3-Clause
+license-file:        [ LICENSE.md ]
+author:              Patrick M. Niedzielski
+maintainer:          Patrick M. Niedzielski <patrick@pniedzielski.net>
+copyright:           Copyright © 2022, Patrick M. Niedzielski.
+synopsis:            Tools for working with Minimalist Grammars
+category:            Text
+description:         >-
+  This package contains parsers and other utilities for working with
+  Minimalist Grammars (MGs) and related formalisms.  The goal for this
+  package is to provide a high-quality, well-documented playground for
+  understanding MGs.
+
+extra-source-files:
+  - README.md
+  - LICENSE.md
+  - package.yaml
+
+ghc-options: -Wall -O4
+default-extensions:
+  - UnicodeSyntax
+
+executables:
+  mgs:
+    source-dirs: executable
+    main: Main.hs
+    dependencies:
+      - base
+    ghc-options:
+      -rtsopts
+      -threaded
+      -with-rtsopts=-N
