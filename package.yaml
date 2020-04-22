@@ -34,3 +34,16 @@ executables:
       -rtsopts
       -threaded
       -with-rtsopts=-N
+
+tests:
+  mgs-test-suite:
+    source-dirs: tests
+    main: Main.hs
+    dependencies:
+    - base
+    - base-unicode-symbols
+    - tasty
+    ghc-options:
+    - -rtsopts
+    - -threaded
+    - -with-rtsopts=-N

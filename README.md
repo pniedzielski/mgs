@@ -6,6 +6,14 @@ Minimalist Grammars (MGs) and related formalisms.  The goal for this
 package is to provide a high-quality, well-documented playground for
 understanding MGs.
 
+Testing
+-------------------------------------------------------------------------------
+
+To run the tests that verify this package, execute the following
+command:
+
+    stack build --test
+
 License
 -------------------------------------------------------------------------------
 
