@@ -7,7 +7,9 @@ module Text.MG.Parser.BottomUp
   , derivations
   ) where
 
-import Text.MG
+import Text.MG.Feature
+import Text.MG.Grammar
+import Text.MG.Derivation
 
 import Data.Multimap (SetMultimap)
 import qualified Data.Multimap as Mmap
