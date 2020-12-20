@@ -30,10 +30,13 @@ import Data.Comp
 
 type Pos = (Int, Int)
 
+data ItemMainChain f = ItemMainChain Pos (FeatureStr f)
+  deriving (Eq, Ord, Show, Read)
+
 data ItemChain f = ItemChain Pos (FeatureStr f)
   deriving (Eq, Ord, Show, Read)
 
-data Item f = Item ExprType (ItemChain f) (Map f (ItemChain f))
+data Item f = Item ExprType (ItemMainChain f) (Map f (ItemChain f))
   deriving (Eq, Ord, Show, Read)
 
 
@@ -74,11 +77,11 @@ doneItems c f n = Set.toList parses
     rs = n `Mmap.find` rightEdges c
     full = Set.intersection ls rs
     parses = Set.filter parseFilter full
-    parseFilter (Item _ (ItemChain _ (Categorial f' :| [])) mvrs) = f == f' && Map.null mvrs
+    parseFilter (Item _ (ItemMainChain _ (Categorial f' :| [])) mvrs) = f == f' && Map.null mvrs
     parseFilter _ = False
 
 addChartItem :: Ord f => Chart f -> Item f -> Chart f
-addChartItem c i@(Item _ (ItemChain (l,r) _) mvrs)
+addChartItem c i@(Item _ (ItemMainChain (l,r) _) mvrs)
     = Chart { leftEdges  = Mmap.prepend l i $ leftEdges  c
             , rightEdges = Mmap.prepend r i $ rightEdges c
             , movers     = movers'
@@ -103,27 +106,27 @@ initialForest :: Ord f => Grammar f String -> [String] -> DerivForest f
 initialForest g s = Mmap.fromList (empties ++ lexItems)
   where
     empties = [ (Item SimplexExpr
-                 (ItemChain (i,i) (lexItemFeatures li))
+                 (ItemMainChain (i,i) (lexItemFeatures li))
                  Map.empty,
                  OpAxiom li)
               | i  <- [0..length s]
               , li <- emptyItems g
               ]
     paired = zip s [0..]
-    lexItems = paired >>= \(x,i) -> map (\li -> (Item SimplexExpr (ItemChain (i,i+1) (lexItemFeatures li)) Map.empty, OpAxiom li)) $ valueItems g x
+    lexItems = paired >>= \(x,i) -> map (\li -> (Item SimplexExpr (ItemMainChain (i,i+1) (lexItemFeatures li)) Map.empty, OpAxiom li)) $ valueItems g x
 
 
 initialAgenda :: Grammar f String -> [String] -> Agenda f
 initialAgenda g s = Agenda (empties ++ lexItems)
   where
     empties = [ Item SimplexExpr
-                (ItemChain (i,i) (lexItemFeatures li))
+                (ItemMainChain (i,i) (lexItemFeatures li))
                 Map.empty
               | i  <- [0..length s]
               , li <- emptyItems g
               ]
     paired = zip s [0..]
-    lexItems = paired >>= \(x,i) -> map (\li -> Item SimplexExpr (ItemChain (i,i+1) (lexItemFeatures li)) Map.empty) $ valueItems g x
+    lexItems = paired >>= \(x,i) -> map (\li -> Item SimplexExpr (ItemMainChain (i,i+1) (lexItemFeatures li)) Map.empty) $ valueItems g x
 
 
 recognize :: (Eq f, Ord f) => Grammar f String -> [String] -> Bool
@@ -162,7 +165,7 @@ fillChart g s =
         return (chart', forest'))
 
 flipNegFirst :: Eq f => (Item f -> Item f -> Maybe (Item f, DerivOp f)) -> Item f -> Item f -> Maybe (Item f, DerivOp f)
-flipNegFirst op i1@(Item _ (ItemChain _ (f :| _)) _) i2 | pos f     = op i1 i2
+flipNegFirst op i1@(Item _ (ItemMainChain _ (f :| _)) _) i2 | pos f     = op i1 i2
                                                         | otherwise = op i2 i1
 
 type UnaryOp  f = Item f -> [(Item f, DerivOp f)]
@@ -170,28 +173,28 @@ type BinaryOp f = Item f -> Item f -> Maybe (Item f, DerivOp f)
 type BinaryContext f = Chart f -> Item f -> [(Item f, DerivOp f)]
 
 merge1All :: (Eq f, Ord f) => BinaryContext f
-merge1All c i@(Item _ (ItemChain (p,q) _) _) =
+merge1All c i@(Item _ (ItemMainChain (p,q) _) _) =
   mapMaybe (flipNegFirst merge1 i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
 
 merge1 :: Eq f => BinaryOp f
-merge1 i1@(Item SimplexExpr (ItemChain (p,q1) (Selectional f1 :| fs)) _)
-       i2@(Item _    (ItemChain (q2,v) (Categorial  f2 :| [])) mvrs)
+merge1 i1@(Item SimplexExpr (ItemMainChain (p,q1) (Selectional f1 :| fs)) _)
+       i2@(Item _    (ItemMainChain (q2,v) (Categorial  f2 :| [])) mvrs)
   | f1 == f2
   , q1 == q2
-    = Just (Item ComplexExpr (ItemChain (p,v) (NonEmpty.fromList fs)) mvrs, OpMerge1 i1 i2)
+    = Just (Item ComplexExpr (ItemMainChain (p,v) (NonEmpty.fromList fs)) mvrs, OpMerge1 i1 i2)
 merge1 _ _ = Nothing
 
 merge2All :: (Eq f, Ord f) => BinaryContext f
-merge2All c i@(Item _ (ItemChain (p,q) _) _) =
+merge2All c i@(Item _ (ItemMainChain (p,q) _) _) =
   mapMaybe (flipNegFirst merge2 i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
 
 merge2 :: (Eq f, Ord f) => BinaryOp f
-merge2 i1@(Item ComplexExpr (ItemChain (p1,q) (Selectional f1 :| fs)) mvrs1)
-       i2@(Item _     (ItemChain (v,p2) (Categorial  f2 :| [])) mvrs2)
+merge2 i1@(Item ComplexExpr (ItemMainChain (p1,q) (Selectional f1 :| fs)) mvrs1)
+       i2@(Item _     (ItemMainChain (v,p2) (Categorial  f2 :| [])) mvrs2)
   | f1 == f2
   , p1 == p2
   , Map.null $ Map.intersection mvrs1 mvrs2
-    = Just (Item ComplexExpr (ItemChain (v,q) (NonEmpty.fromList fs)) (Map.union mvrs1 mvrs2), OpMerge2 i1 i2)
+    = Just (Item ComplexExpr (ItemMainChain (v,q) (NonEmpty.fromList fs)) (Map.union mvrs1 mvrs2), OpMerge2 i1 i2)
 merge2 _ _ = Nothing
 
 merge3All :: (Eq f, Ord f) => BinaryContext f
@@ -199,17 +202,17 @@ merge3All c i =
   mapMaybe (flipNegFirst merge3 i) $ (Set.toList $ allItems c)
 
 merge3 :: (Eq f, Ord f) => BinaryOp f
-merge3 i1@(Item _ (ItemChain (p,q) (Selectional f1 :| fs)) mvrs1)
-       i2@(Item _ (ItemChain (v,w) (Categorial  f2 :| (Licensee f:fs'))) mvrs2)
+merge3 i1@(Item _ (ItemMainChain (p,q) (Selectional f1 :| fs)) mvrs1)
+       i2@(Item _ (ItemMainChain (v,w) (Categorial  f2 :| (Licensee f:fs'))) mvrs2)
   | f1 == f2
   , w <= p || q <= v
   , Map.null $ Map.intersection (Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))) $ Map.intersection mvrs1 mvrs2
-    = Just (Item ComplexExpr (ItemChain (p,q) (NonEmpty.fromList fs)) (Map.unions [mvrs1,mvrs2, Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))]), OpMerge3 i1 i2)
+    = Just (Item ComplexExpr (ItemMainChain (p,q) (NonEmpty.fromList fs)) (Map.unions [mvrs1,mvrs2, Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))]), OpMerge3 i1 i2)
 merge3 _ _ = Nothing
 
 move1 :: (Eq f, Ord f) => UnaryOp f
-move1 i@(Item ComplexExpr (ItemChain (p1,q) (Licenser f :| fs)) mvrs)
-    = [ (Item ComplexExpr (ItemChain (v,q) (NonEmpty.fromList fs)) mvrs', OpMove1 i)
+move1 i@(Item ComplexExpr (ItemMainChain (p1,q) (Licenser f :| fs)) mvrs)
+    = [ (Item ComplexExpr (ItemMainChain (v,q) (NonEmpty.fromList fs)) mvrs', OpMove1 i)
       | ItemChain (v,p2) fs' <- mvr
       , p1 == p2
       , length fs' == 1
@@ -220,8 +223,8 @@ move1 i@(Item ComplexExpr (ItemChain (p1,q) (Licenser f :| fs)) mvrs)
 move1 _ = []
 
 move2 :: (Eq f, Ord f) => UnaryOp f
-move2 i@(Item ComplexExpr (ItemChain (p,q) (Licenser f :| fs)) mvrs)
-    = [ (Item ComplexExpr (ItemChain (p,q) (NonEmpty.fromList fs)) $
+move2 i@(Item ComplexExpr (ItemMainChain (p,q) (Licenser f :| fs)) mvrs)
+    = [ (Item ComplexExpr (ItemMainChain (p,q) (NonEmpty.fromList fs)) $
         Map.insert (feat fs') (ItemChain (v,w) (NonEmpty.fromList fs')) mvrs', OpMove2 i)
       | ItemChain (v,w) (_ :| fs') <- mvr
       , not $ null fs'
@@ -241,9 +244,13 @@ showChart c =
 
 showItem :: Item Char -> String
 showItem (Item SimplexExpr mainChain ms) =
-  "[" ++ showItemChain mainChain ++ (Map.elems ms >>= showItemChain) ++ "]ₛ\n"
+  "[" ++ showItemMainChain mainChain ++ (Map.elems ms >>= showItemChain) ++ "]ₛ\n"
 showItem (Item ComplexExpr mainChain ms) =
-  "[" ++ showItemChain mainChain ++ (Map.elems ms >>= showItemChain) ++ "]ₜ\n"
+  "[" ++ showItemMainChain mainChain ++ (Map.elems ms >>= showItemChain) ++ "]ₜ\n"
+
+showItemMainChain :: ItemMainChain Char -> String
+showItemMainChain (ItemMainChain (p,q) fs) =
+  "(" ++ show p ++ "," ++ show q ++ ")" ++ showFeatureStr fs
 
 showItemChain :: ItemChain Char -> String
 showItemChain (ItemChain (p,q) fs) =
