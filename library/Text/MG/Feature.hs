@@ -3,6 +3,7 @@
 module Text.MG.Feature
   ( Feature(..)
   , pos
+  , neg
   , FeatureStr
   ) where
 
@@ -21,5 +22,8 @@ pos (Selectional _) = True
 pos (Categorial _)  = False
 pos (Licenser _)    = True
 pos (Licensee _)    = False
+
+neg :: Feature f -> Bool
+neg = not . pos
 
 type FeatureStr f = NonEmpty (Feature f)
