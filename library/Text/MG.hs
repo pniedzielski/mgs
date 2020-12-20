@@ -1,9 +1,7 @@
 {-# LANGUAGE DeriveFunctor, FlexibleInstances #-}
 
 module Text.MG
-  ( Feature(..)
-  , pos
-  , FeatureStr
+  ( module Text.MG.Feature
   , LexItem(..)
   , isEmptyLexItem
   , lexItemFeatures
@@ -17,28 +15,12 @@ module Text.MG
   , DerivationTree(..)
   ) where
 
-import Data.List.NonEmpty (NonEmpty)
+import Text.MG.Feature
 import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Tree (Tree(..))
 import Data.Comp
-
--- Features are given structure in an MG.
-data Feature f
-    = Selectional f
-    | Categorial f
-    | Licenser f
-    | Licensee f
-  deriving (Eq, Ord, Show, Read, Functor)
-
-pos :: Feature f -> Bool
-pos (Selectional _) = True
-pos (Categorial _)  = False
-pos (Licenser _)    = True
-pos (Licensee _)    = False
-
-type FeatureStr f = NonEmpty (Feature f)
 
 -- Lexical item over syntactic features `Feature f` and nonsyntactic
 -- features α.
