@@ -24,12 +24,25 @@ ghc-options: -Wall -O3
 default-extensions:
   - UnicodeSyntax
 
+library:
+  source-dirs: library
+  dependencies:
+    - base
+    - compdata
+    - hashmap
+    - containers
+    - more-containers
+    - monad-loops
+    - tree-view
+
 executables:
   mgs:
     source-dirs: executable
     main: Main.hs
     dependencies:
       - base
+      - mgs
+      - containers
     ghc-options:
       -rtsopts
       -threaded
