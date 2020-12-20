@@ -28,6 +28,10 @@ import qualified Data.List as List
 
 import Data.Comp
 
+
+-------------------------------------------------------------------------------
+
+
 type Pos = (Int, Int)
 
 data ItemMainChain f = ItemMainChain Pos (FeatureStr f)
@@ -38,6 +42,9 @@ data ItemChain f = ItemChain Pos (FeatureStr f)
 
 data Item f = Item ExprType (ItemMainChain f) (Map f (ItemChain f))
   deriving (Eq, Ord, Show, Read)
+
+
+-------------------------------------------------------------------------------
 
 
 newtype Agenda f = Agenda [Item f]
@@ -62,6 +69,11 @@ initialAgenda g s = Agenda (empties ++ lexItems)
               ]
     paired = zip s [0..]
     lexItems = paired >>= \(x,i) -> map (\li -> Item SimplexExpr (ItemMainChain (i,i+1) (lexItemFeatures li)) Map.empty) $ valueItems g x
+
+
+-------------------------------------------------------------------------------
+
+
 data Chart f = Chart
     { leftEdges  :: SetMultimap Int (Item f)
     , rightEdges :: SetMultimap Int (Item f)
@@ -101,6 +113,10 @@ addChartItem c i@(Item _ (ItemMainChain (l,r) _) mvrs)
   where
     movers' = foldr (`Mmap.prepend` i) (movers c) (Map.keys mvrs)
 
+
+-------------------------------------------------------------------------------
+
+
 data DerivOp f
     = OpAxiom  (LexItem f String)
     | OpMerge1 (Item f) (Item f)
@@ -127,6 +143,7 @@ initialForest g s = Mmap.fromList (empties ++ lexItems)
     lexItems = paired >>= \(x,i) -> map (\li -> (Item SimplexExpr (ItemMainChain (i,i+1) (lexItemFeatures li)) Map.empty, OpAxiom li)) $ valueItems g x
 
 
+-------------------------------------------------------------------------------
 
 
 recognize :: (Eq f, Ord f) => Grammar f String -> [String] -> Bool
