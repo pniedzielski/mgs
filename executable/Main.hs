@@ -40,6 +40,16 @@ main = do
   let (chart, df) = fillChart g2 $ words "Brutus did stab Caesar"
   putStrLn . Tree.drawTree . deriv2Tree . head $ derivations df (doneItems chart 'c' 4)
 
+  testMe g3 ""
+  testMe g3 "a b c"
+  testMe g3 "a a b c"
+  testMe g3 "a a b b c"
+  testMe g3 "a a b b c c"
+  testMe g3 "a a a b b b c c c"
+  let (chart', df') = fillChart g3 $ words "a a b b c c"
+  putStrLn $ showChart chart'
+  putStrLn . Tree.drawTree . deriv2Tree . head $ derivations df' (doneItems chart' 'd' 6)
+
 
 dp1 :: String -> LexItem Char String
 dp1 = LexItem $ NonEmpty.fromList [Categorial 'd']
@@ -82,5 +92,21 @@ g2 = Grammar
     , LexItem (NonEmpty.fromList [Selectional 't', Categorial 'c']) ""
     , LexItem (NonEmpty.fromList [Selectional 't', Licenser 'c', Licenser 'w', Categorial 'c']) ""
     , LexItem (NonEmpty.fromList [Categorial 'd', Licensee 'k', Licensee 'w']) "who"
+    ]
+  }
+
+
+g3 :: Grammar Char String
+g3 = Grammar
+  { startCategory = 'd'
+  , lexicon = Set.fromList
+    [ LexItem (NonEmpty.fromList [Categorial  'c', Licensee 'c']) "c"
+    , LexItem (NonEmpty.fromList [Selectional 'c', Categorial 'b', Licensee 'b']) "b"
+    , LexItem (NonEmpty.fromList [Selectional 'b', Categorial 'a', Licensee 'a']) "a"
+    , LexItem (NonEmpty.fromList [Selectional 'a', Licenser 'c', Categorial 'c', Licensee 'c']) "c"
+    , LexItem (NonEmpty.fromList [Selectional 'c', Licenser 'b', Categorial 'b', Licensee 'b']) "b"
+    , LexItem (NonEmpty.fromList [Selectional 'b', Licenser 'a', Categorial 'a', Licensee 'a']) "a"
+    , LexItem (NonEmpty.fromList [Selectional 'a', Licenser 'c', Licenser 'b', Licenser 'a', Categorial 'd']) ""
+    , LexItem (NonEmpty.fromList [Categorial 'd']) ""
     ]
   }
