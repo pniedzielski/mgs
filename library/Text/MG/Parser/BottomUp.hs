@@ -51,6 +51,17 @@ nextAgendaItem :: Agenda f -> Maybe (Item f, [Item f])
 nextAgendaItem (Agenda [])    = Nothing
 nextAgendaItem (Agenda (x:xs)) = Just (x,xs)
 
+initialAgenda :: Grammar f String -> [String] -> Agenda f
+initialAgenda g s = Agenda (empties ++ lexItems)
+  where
+    empties = [ Item SimplexExpr
+                (ItemMainChain (i,i) (lexItemFeatures li))
+                Map.empty
+              | i  <- [0..length s]
+              , li <- emptyItems g
+              ]
+    paired = zip s [0..]
+    lexItems = paired >>= \(x,i) -> map (\li -> Item SimplexExpr (ItemMainChain (i,i+1) (lexItemFeatures li)) Map.empty) $ valueItems g x
 data Chart f = Chart
     { leftEdges  :: SetMultimap Int (Item f)
     , rightEdges :: SetMultimap Int (Item f)
@@ -116,17 +127,6 @@ initialForest g s = Mmap.fromList (empties ++ lexItems)
     lexItems = paired >>= \(x,i) -> map (\li -> (Item SimplexExpr (ItemMainChain (i,i+1) (lexItemFeatures li)) Map.empty, OpAxiom li)) $ valueItems g x
 
 
-initialAgenda :: Grammar f String -> [String] -> Agenda f
-initialAgenda g s = Agenda (empties ++ lexItems)
-  where
-    empties = [ Item SimplexExpr
-                (ItemMainChain (i,i) (lexItemFeatures li))
-                Map.empty
-              | i  <- [0..length s]
-              , li <- emptyItems g
-              ]
-    paired = zip s [0..]
-    lexItems = paired >>= \(x,i) -> map (\li -> Item SimplexExpr (ItemMainChain (i,i+1) (lexItemFeatures li)) Map.empty) $ valueItems g x
 
 
 recognize :: (Eq f, Ord f) => Grammar f String -> [String] -> Bool
