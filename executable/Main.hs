@@ -2,6 +2,7 @@ module Main (main) where
 
 import qualified Data.Set as Set
 import qualified Data.List.NonEmpty as NonEmpty
+import qualified Data.Tree as Tree
 import Text.MG
 
 
@@ -36,7 +37,8 @@ main = do
   testMe g2 "who did fall"
   testMe g2 "who did Brutus see"
   testMe g2 "who did see Brutus"
-  putStrLn . showChart . fillChart g2 $ words "who did Brutus see"
+  let (chart, df) = fillChart g2 $ words "Brutus did stab Caesar"
+  putStrLn . Tree.drawTree . deriv2Tree . head $ derivations df (doneItems chart 'c' 4)
 
 
 dp1 :: String -> LexItem Char String
@@ -73,8 +75,8 @@ g2 = Grammar
     , vtr2 "stab"
     , vtr2 "see"
     , LexItem (NonEmpty.fromList [Selectional 'd', Categorial 'V', Licensee 'v']) "fall"
-    , LexItem (NonEmpty.fromList [Selectional 'V', Licenser 'k', Licenser 'v', Selectional 'd', Categorial 'v', Licensee 't']) ""
-    , LexItem (NonEmpty.fromList [Selectional 'V', Licenser 'v', Categorial 'v', Licensee 't']) ""
+    , LexItem (NonEmpty.fromList [Selectional 'V', Licenser 'k', Licenser 'v', Selectional 'd', Categorial 'v']) ""
+    , LexItem (NonEmpty.fromList [Selectional 'V', Licenser 'v', Categorial 'v']) ""
     , LexItem (NonEmpty.fromList [Selectional 'v', Licenser 'k', Categorial 't']) "did"
     , LexItem (NonEmpty.fromList [Selectional 'v', Licenser 'k', Categorial 't', Licensee 'c']) "did"
     , LexItem (NonEmpty.fromList [Selectional 't', Categorial 'c']) ""
