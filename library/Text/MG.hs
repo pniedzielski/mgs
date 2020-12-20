@@ -2,39 +2,19 @@
 
 module Text.MG
   ( module Text.MG.Feature
-  , LexItem(..)
-  , isEmptyLexItem
-  , lexItemFeatures
+  , module Text.MG.Grammar
   , DerivationF(..)
   , Derivation
   , Chain(..)
   , Expr(..)
-  , Grammar(..)
-  , emptyItems
-  , valueItems
   , DerivationTree(..)
   ) where
 
 import Text.MG.Feature
+import Text.MG.Grammar
 import Data.Map (Map)
-import Data.Set (Set)
-import qualified Data.Set as Set
 import Data.Tree (Tree(..))
 import Data.Comp
-
--- Lexical item over syntactic features `Feature f` and nonsyntactic
--- features α.
-data LexItem f β = LexItem (FeatureStr f) β
-  deriving (Eq, Ord, Show, Read, Functor)
-
-isEmptyLexItem :: LexItem f String -> Bool
-isEmptyLexItem (LexItem _ β) = null β
-
-lexItemFeatures :: LexItem f β -> FeatureStr f
-lexItemFeatures (LexItem fs _) = fs
-
-lexItemContent :: LexItem f β -> β
-lexItemContent (LexItem _ β) = β
 
 -- Derivation
 data DerivationF f β α
@@ -56,19 +36,6 @@ data Chain f β = Chain (FeatureStr f) β
 -- Lexical?, main chain, movers
 data Expr f β = Expr Bool (Chain f β) (Map f (Chain f β))
   deriving (Eq, Ord, Show, Read, Functor)
-
--- MGs are lexicalized formalisms
-data Grammar f β = Grammar
-    { startCategory :: f
-    , lexicon :: Set (LexItem f β)
-    }
-  deriving (Eq, Ord, Show, Read)
-
-emptyItems :: Grammar f String -> [LexItem f String]
-emptyItems = Set.toList . Set.filter isEmptyLexItem . lexicon
-
-valueItems :: Eq β =>  Grammar f β -> β -> [LexItem f β]
-valueItems g β = (Set.toList . Set.filter (\x -> lexItemContent x == β) . lexicon) g
 
 
 -------------------------------------------------------------------------------
