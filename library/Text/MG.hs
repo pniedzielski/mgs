@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor, FlexibleInstances #-}
 
 module Text.MG
   ( Feature(..)
@@ -7,13 +7,14 @@ module Text.MG
   , LexItem(..)
   , isEmptyLexItem
   , lexItemFeatures
-  , Derivation(..)
+  , DerivationF(..)
+  , Derivation
   , Chain(..)
   , Expr(..)
   , Grammar(..)
   , emptyItems
   , valueItems
-  , deriv2Tree
+  , DerivationTree(..)
   ) where
 
 import Data.List.NonEmpty (NonEmpty)
@@ -21,6 +22,7 @@ import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Set as Set
 import Data.Tree (Tree(..))
+import Data.Comp
 
 -- Features are given structure in an MG.
 data Feature f
@@ -53,14 +55,17 @@ lexItemContent :: LexItem f β -> β
 lexItemContent (LexItem _ β) = β
 
 -- Derivation
-data Derivation f β
+data DerivationF f β α
     = Select (LexItem f β)
-    | Merge1 (Derivation f β) (Derivation f β)
-    | Merge2 (Derivation f β) (Derivation f β)
-    | Merge3 (Derivation f β) (Derivation f β)
-    | Move1 (Derivation f β)
-    | Move2 (Derivation f β)
+    | Merge1 α α
+    | Merge2 α α
+    | Merge3 α α
+    | Move1  α
+    | Move2  α
   deriving (Eq, Show, Read, Functor)
+
+
+type Derivation f β = Term (DerivationF f β)
 
 
 data Chain f β = Chain (FeatureStr f) β
@@ -87,22 +92,31 @@ valueItems g β = (Set.toList . Set.filter (\x -> lexItemContent x == β) . lexi
 -------------------------------------------------------------------------------
 
 
-deriv2Tree :: Derivation f String -> Tree String
-deriv2Tree (Select li) = Node { rootLabel = if null $ lexItemContent li then "ε" else lexItemContent li
-                              , subForest = []
-                              }
-deriv2Tree (Merge1 d1 d2) = Node { rootLabel = "Merge1"
-                                 , subForest = [deriv2Tree d1, deriv2Tree d2]
-                                 }
-deriv2Tree (Merge2 d1 d2) = Node { rootLabel = "Merge2"
-                                 , subForest = [deriv2Tree d1, deriv2Tree d2]
-                                 }
-deriv2Tree (Merge3 d1 d2) = Node { rootLabel = "Merge3"
-                                 , subForest = [deriv2Tree d1, deriv2Tree d2]
-                                 }
-deriv2Tree (Move1 d) = Node { rootLabel = "Move1"
-                            , subForest = [deriv2Tree d]
-                            }
-deriv2Tree (Move2 d) = Node { rootLabel = "Move2"
-                            , subForest = [deriv2Tree d]
-                            }
+class DerivationTree f where
+    derivationTree :: Alg f (Tree String)
+
+instance DerivationTree (DerivationF f String) where
+    derivationTree (Select li)
+        = Node { rootLabel = if null $ lexItemContent li then "ε" else lexItemContent li
+               , subForest = []
+               }
+    derivationTree (Merge1 d1 d2)
+        = Node { rootLabel = "Merge1"
+               , subForest = [d1, d2]
+               }
+    derivationTree (Merge2 d1 d2)
+        = Node { rootLabel = "Merge2"
+               , subForest = [d1, d2]
+               }
+    derivationTree (Merge3 d1 d2)
+        = Node { rootLabel = "Merge3"
+               , subForest = [d1, d2]
+               }
+    derivationTree (Move1 d)
+        = Node { rootLabel = "Move1"
+               , subForest = [d]
+               }
+    derivationTree (Move2 d)
+        = Node { rootLabel = "Move2"
+               , subForest = [d]
+               }

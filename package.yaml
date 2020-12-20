@@ -42,6 +42,7 @@ executables:
     dependencies:
       - base
       - mgs
+      - compdata
       - containers
     ghc-options:
       -rtsopts
