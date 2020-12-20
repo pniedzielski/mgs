@@ -10,6 +10,7 @@ module Text.MG.Parser.BottomUp
 import Text.MG.Feature
 import Text.MG.Grammar
 import Text.MG.Derivation
+import Text.MG.Expr
 
 import Data.Multimap (SetMultimap)
 import qualified Data.Multimap as Mmap
@@ -32,9 +33,7 @@ type Pos = (Int, Int)
 data ItemChain f = ItemChain Pos (FeatureStr f)
   deriving (Eq, Ord, Show, Read)
 
-data ItemType = SimplexItem | ComplexItem
-
-data Item f = Item ItemType (ItemChain f) (Map f (ItemChain f))
+data Item f = Item ExprType (ItemChain f) (Map f (ItemChain f))
   deriving (Eq, Ord, Show, Read)
 
 
@@ -103,7 +102,7 @@ type DerivForest f = SetMultimap (Item f) (DerivOp f)
 initialForest :: Ord f => Grammar f String -> [String] -> DerivForest f
 initialForest g s = Mmap.fromList (empties ++ lexItems)
   where
-    empties = [ (Item SimplexItem
+    empties = [ (Item SimplexExpr
                  (ItemChain (i,i) (lexItemFeatures li))
                  Map.empty,
                  OpAxiom li)
@@ -111,20 +110,20 @@ initialForest g s = Mmap.fromList (empties ++ lexItems)
               , li <- emptyItems g
               ]
     paired = zip s [0..]
-    lexItems = paired >>= \(x,i) -> map (\li -> (Item SimplexItem (ItemChain (i,i+1) (lexItemFeatures li)) Map.empty, OpAxiom li)) $ valueItems g x
+    lexItems = paired >>= \(x,i) -> map (\li -> (Item SimplexExpr (ItemChain (i,i+1) (lexItemFeatures li)) Map.empty, OpAxiom li)) $ valueItems g x
 
 
 initialAgenda :: Grammar f String -> [String] -> Agenda f
 initialAgenda g s = Agenda (empties ++ lexItems)
   where
-    empties = [ Item SimplexItem
+    empties = [ Item SimplexExpr
                 (ItemChain (i,i) (lexItemFeatures li))
                 Map.empty
               | i  <- [0..length s]
               , li <- emptyItems g
               ]
     paired = zip s [0..]
-    lexItems = paired >>= \(x,i) -> map (\li -> Item SimplexItem (ItemChain (i,i+1) (lexItemFeatures li)) Map.empty) $ valueItems g x
+    lexItems = paired >>= \(x,i) -> map (\li -> Item SimplexExpr (ItemChain (i,i+1) (lexItemFeatures li)) Map.empty) $ valueItems g x
 
 
 recognize :: (Eq f, Ord f) => Grammar f String -> [String] -> Bool
@@ -175,11 +174,11 @@ merge1All c i@(Item _ (ItemChain (p,q) _) _) =
   mapMaybe (flipNegFirst merge1 i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
 
 merge1 :: Eq f => BinaryOp f
-merge1 i1@(Item SimplexItem (ItemChain (p,q1) (Selectional f1 :| fs)) _)
+merge1 i1@(Item SimplexExpr (ItemChain (p,q1) (Selectional f1 :| fs)) _)
        i2@(Item _    (ItemChain (q2,v) (Categorial  f2 :| [])) mvrs)
   | f1 == f2
   , q1 == q2
-    = Just (Item ComplexItem (ItemChain (p,v) (NonEmpty.fromList fs)) mvrs, OpMerge1 i1 i2)
+    = Just (Item ComplexExpr (ItemChain (p,v) (NonEmpty.fromList fs)) mvrs, OpMerge1 i1 i2)
 merge1 _ _ = Nothing
 
 merge2All :: (Eq f, Ord f) => BinaryContext f
@@ -187,12 +186,12 @@ merge2All c i@(Item _ (ItemChain (p,q) _) _) =
   mapMaybe (flipNegFirst merge2 i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
 
 merge2 :: (Eq f, Ord f) => BinaryOp f
-merge2 i1@(Item ComplexItem (ItemChain (p1,q) (Selectional f1 :| fs)) mvrs1)
+merge2 i1@(Item ComplexExpr (ItemChain (p1,q) (Selectional f1 :| fs)) mvrs1)
        i2@(Item _     (ItemChain (v,p2) (Categorial  f2 :| [])) mvrs2)
   | f1 == f2
   , p1 == p2
   , Map.null $ Map.intersection mvrs1 mvrs2
-    = Just (Item ComplexItem (ItemChain (v,q) (NonEmpty.fromList fs)) (Map.union mvrs1 mvrs2), OpMerge2 i1 i2)
+    = Just (Item ComplexExpr (ItemChain (v,q) (NonEmpty.fromList fs)) (Map.union mvrs1 mvrs2), OpMerge2 i1 i2)
 merge2 _ _ = Nothing
 
 merge3All :: (Eq f, Ord f) => BinaryContext f
@@ -205,12 +204,12 @@ merge3 i1@(Item _ (ItemChain (p,q) (Selectional f1 :| fs)) mvrs1)
   | f1 == f2
   , w <= p || q <= v
   , Map.null $ Map.intersection (Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))) $ Map.intersection mvrs1 mvrs2
-    = Just (Item ComplexItem (ItemChain (p,q) (NonEmpty.fromList fs)) (Map.unions [mvrs1,mvrs2, Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))]), OpMerge3 i1 i2)
+    = Just (Item ComplexExpr (ItemChain (p,q) (NonEmpty.fromList fs)) (Map.unions [mvrs1,mvrs2, Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))]), OpMerge3 i1 i2)
 merge3 _ _ = Nothing
 
 move1 :: (Eq f, Ord f) => UnaryOp f
-move1 i@(Item ComplexItem (ItemChain (p1,q) (Licenser f :| fs)) mvrs)
-    = [ (Item ComplexItem (ItemChain (v,q) (NonEmpty.fromList fs)) mvrs', OpMove1 i)
+move1 i@(Item ComplexExpr (ItemChain (p1,q) (Licenser f :| fs)) mvrs)
+    = [ (Item ComplexExpr (ItemChain (v,q) (NonEmpty.fromList fs)) mvrs', OpMove1 i)
       | ItemChain (v,p2) fs' <- mvr
       , p1 == p2
       , length fs' == 1
@@ -221,8 +220,8 @@ move1 i@(Item ComplexItem (ItemChain (p1,q) (Licenser f :| fs)) mvrs)
 move1 _ = []
 
 move2 :: (Eq f, Ord f) => UnaryOp f
-move2 i@(Item ComplexItem (ItemChain (p,q) (Licenser f :| fs)) mvrs)
-    = [ (Item ComplexItem (ItemChain (p,q) (NonEmpty.fromList fs)) $
+move2 i@(Item ComplexExpr (ItemChain (p,q) (Licenser f :| fs)) mvrs)
+    = [ (Item ComplexExpr (ItemChain (p,q) (NonEmpty.fromList fs)) $
         Map.insert (feat fs') (ItemChain (v,w) (NonEmpty.fromList fs')) mvrs', OpMove2 i)
       | ItemChain (v,w) (_ :| fs') <- mvr
       , not $ null fs'
@@ -241,9 +240,9 @@ showChart c =
   Set.toList (allItems c) >>= showItem
 
 showItem :: Item Char -> String
-showItem (Item SimplexItem mainChain ms) =
+showItem (Item SimplexExpr mainChain ms) =
   "[" ++ showItemChain mainChain ++ (Map.elems ms >>= showItemChain) ++ "]ₛ\n"
-showItem (Item ComplexItem mainChain ms) =
+showItem (Item ComplexExpr mainChain ms) =
   "[" ++ showItemChain mainChain ++ (Map.elems ms >>= showItemChain) ++ "]ₜ\n"
 
 showItemChain :: ItemChain Char -> String
