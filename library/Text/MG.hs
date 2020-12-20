@@ -40,6 +40,12 @@ data Feature f
     | Licensee f
   deriving (Eq, Ord, Show, Read, Functor)
 
+pos :: Feature f -> Bool
+pos (Selectional _) = True
+pos (Categorial _)  = False
+pos (Licenser _)    = True
+pos (Licensee _)    = False
+
 type FeatureStr f = NonEmpty (Feature f)
 
 -- Lexical item over syntactic features `Feature f` and nonsyntactic
@@ -224,9 +230,13 @@ fillChart g s =
         forest' <- readSTRef forest
         return (chart', forest'))
 
+flipNegFirst :: Eq f => (Item f -> Item f -> Maybe (Item f, DerivOp f)) -> Item f -> Item f -> Maybe (Item f, DerivOp f)
+flipNegFirst op i1@(Item _ (ItemChain _ (f :| _)) _) i2 | pos f     = op i1 i2
+                                                        | otherwise = op i2 i1
+
 merge1All :: (Eq f, Ord f) =>  Chart f -> Item f -> [(Item f, DerivOp f)]
 merge1All c i@(Item _ (ItemChain (p,q) _) _) =
-  mapMaybe (`merge1` i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
+  mapMaybe (flipNegFirst merge1 i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
 
 merge1 :: Eq f => Item f -> Item f -> Maybe (Item f, DerivOp f)
 merge1 i1@(Item True (ItemChain (p,q1) (Selectional f1 :| fs)) _)
@@ -234,16 +244,11 @@ merge1 i1@(Item True (ItemChain (p,q1) (Selectional f1 :| fs)) _)
   | f1 == f2
   , q1 == q2
     = Just (Item False (ItemChain (p,v) (NonEmpty.fromList fs)) mvrs, OpMerge1 i1 i2)
-merge1 i2@(Item _    (ItemChain (q2,v) (Categorial  f2 :| [])) mvrs)
-       i1@(Item True (ItemChain (p,q1) (Selectional f1 :| fs)) _)
-  | f1 == f2
-  , q1 == q2
-    = Just (Item False (ItemChain (p,v) (NonEmpty.fromList fs)) mvrs, OpMerge1 i1 i2)
 merge1 _ _ = Nothing
 
 merge2All :: (Eq f, Ord f) =>  Chart f -> Item f -> [(Item f, DerivOp f)]
 merge2All c i@(Item _ (ItemChain (p,q) _) _) =
-  mapMaybe (`merge2` i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
+  mapMaybe (flipNegFirst merge2 i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
 
 merge2 :: (Eq f, Ord f) => Item f -> Item f -> Maybe (Item f, DerivOp f)
 merge2 i1@(Item False (ItemChain (p1,q) (Selectional f1 :| fs)) mvrs1)
@@ -252,27 +257,15 @@ merge2 i1@(Item False (ItemChain (p1,q) (Selectional f1 :| fs)) mvrs1)
   , p1 == p2
   , Map.null $ Map.intersection mvrs1 mvrs2
     = Just (Item False (ItemChain (v,q) (NonEmpty.fromList fs)) (Map.union mvrs1 mvrs2), OpMerge2 i1 i2)
-merge2 i2@(Item _     (ItemChain (v,p2) (Categorial  f2 :| [])) mvrs2)
-       i1@(Item False (ItemChain (p1,q) (Selectional f1 :| fs)) mvrs1)
-  | f1 == f2
-  , p1 == p2
-  , Map.null $ Map.intersection mvrs1 mvrs2
-    = Just (Item False (ItemChain (v,q) (NonEmpty.fromList fs)) (Map.union mvrs1 mvrs2), OpMerge2 i1 i2)
 merge2 _ _ = Nothing
 
 merge3All :: (Eq f, Ord f) => Chart f -> Item f -> [(Item f, DerivOp f)]
 merge3All c i =
-  mapMaybe (`merge3` i) $ (Set.toList $ allItems c)
+  mapMaybe (flipNegFirst merge3 i) $ (Set.toList $ allItems c)
 
 merge3 :: (Eq f, Ord f) => Item f -> Item f -> Maybe (Item f, DerivOp f)
 merge3 i1@(Item _ (ItemChain (p,q) (Selectional f1 :| fs)) mvrs1)
        i2@(Item _ (ItemChain (v,w) (Categorial  f2 :| (Licensee f:fs'))) mvrs2)
-  | f1 == f2
-  , w <= p || q <= v
-  , Map.null $ Map.intersection (Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))) $ Map.intersection mvrs1 mvrs2
-    = Just (Item False (ItemChain (p,q) (NonEmpty.fromList fs)) (Map.unions [mvrs1,mvrs2, Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))]), OpMerge3 i1 i2)
-merge3 i2@(Item _ (ItemChain (v,w) (Categorial  f2 :| (Licensee f:fs'))) mvrs2)
-       i1@(Item _ (ItemChain (p,q) (Selectional f1 :| fs)) mvrs1)
   | f1 == f2
   , w <= p || q <= v
   , Map.null $ Map.intersection (Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))) $ Map.intersection mvrs1 mvrs2
