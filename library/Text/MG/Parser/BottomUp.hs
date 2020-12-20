@@ -181,6 +181,15 @@ fillChart g s =
         forest' <- readSTRef forest
         return (chart', forest'))
 
+itemsAtLeftEdge :: Ord f => Int -> Chart f -> [Item f]
+itemsAtLeftEdge n = Set.toList . Mmap.find n . leftEdges
+
+itemsAtRightEdge :: Ord f => Int -> Chart f -> [Item f]
+itemsAtRightEdge n = Set.toList . Mmap.find n . rightEdges
+
+itemsAnywhere :: Chart f -> [Item f]
+itemsAnywhere = Set.toList . allItems
+
 type UnaryOp  f = Item f -> [(Item f, DerivOp f)]
 type BinaryOp f = Item f -> Item f -> Maybe (Item f, DerivOp f)
 type BinaryContext f = Chart f -> Item f -> [(Item f, DerivOp f)]
@@ -191,11 +200,11 @@ flipNegFirst op i1@(Item _ (ItemMainChain _ (f :| _)) _) i2 | pos f     = op i1 
 
 merge1All :: (Eq f, Ord f) => BinaryContext f
 merge1All c i@(Item _ (ItemMainChain (p,q) _) _) =
-  mapMaybe (flipNegFirst merge1 i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
+  mapMaybe (flipNegFirst merge1 i) $ itemsAtLeftEdge q c ++ itemsAtRightEdge p c
 
 merge1 :: Eq f => BinaryOp f
 merge1 i1@(Item SimplexExpr (ItemMainChain (p,q1) (Selectional f1 :| fs)) _)
-       i2@(Item _    (ItemMainChain (q2,v) (Categorial  f2 :| [])) mvrs)
+       i2@(Item _           (ItemMainChain (q2,v) (Categorial  f2 :| [])) mvrs)
   | f1 == f2
   , q1 == q2
     = Just (Item ComplexExpr (ItemMainChain (p,v) (NonEmpty.fromList fs)) mvrs, OpMerge1 i1 i2)
@@ -203,11 +212,11 @@ merge1 _ _ = Nothing
 
 merge2All :: (Eq f, Ord f) => BinaryContext f
 merge2All c i@(Item _ (ItemMainChain (p,q) _) _) =
-  mapMaybe (flipNegFirst merge2 i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
+  mapMaybe (flipNegFirst merge2 i) $ itemsAtLeftEdge q c ++ itemsAtRightEdge p c
 
 merge2 :: (Eq f, Ord f) => BinaryOp f
 merge2 i1@(Item ComplexExpr (ItemMainChain (p1,q) (Selectional f1 :| fs)) mvrs1)
-       i2@(Item _     (ItemMainChain (v,p2) (Categorial  f2 :| [])) mvrs2)
+       i2@(Item _           (ItemMainChain (v,p2) (Categorial  f2 :| [])) mvrs2)
   | f1 == f2
   , p1 == p2
   , Map.null $ Map.intersection mvrs1 mvrs2
@@ -216,7 +225,7 @@ merge2 _ _ = Nothing
 
 merge3All :: (Eq f, Ord f) => BinaryContext f
 merge3All c i =
-  mapMaybe (flipNegFirst merge3 i) $ (Set.toList $ allItems c)
+  mapMaybe (flipNegFirst merge3 i) $ itemsAnywhere c
 
 merge3 :: (Eq f, Ord f) => BinaryOp f
 merge3 i1@(Item _ (ItemMainChain (p,q) (Selectional f1 :| fs)) mvrs1)
