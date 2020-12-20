@@ -268,11 +268,13 @@ merge3 :: (Eq f, Ord f) => Item f -> Item f -> Maybe (Item f, DerivOp f)
 merge3 i1@(Item _ (ItemChain (p,q) (Selectional f1 :| fs)) mvrs1)
        i2@(Item _ (ItemChain (v,w) (Categorial  f2 :| (Licensee f:fs'))) mvrs2)
   | f1 == f2
+  , w <= p || q <= v
   , Map.null $ Map.intersection (Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))) $ Map.intersection mvrs1 mvrs2
     = Just (Item False (ItemChain (p,q) (NonEmpty.fromList fs)) (Map.unions [mvrs1,mvrs2, Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))]), OpMerge3 i1 i2)
 merge3 i2@(Item _ (ItemChain (v,w) (Categorial  f2 :| (Licensee f:fs'))) mvrs2)
        i1@(Item _ (ItemChain (p,q) (Selectional f1 :| fs)) mvrs1)
   | f1 == f2
+  , w <= p || q <= v
   , Map.null $ Map.intersection (Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))) $ Map.intersection mvrs1 mvrs2
     = Just (Item False (ItemChain (p,q) (NonEmpty.fromList fs)) (Map.unions [mvrs1,mvrs2, Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))]), OpMerge3 i1 i2)
 merge3 _ _ = Nothing
