@@ -23,6 +23,8 @@ import Control.Monad.Loops (iterateUntil)
 import Data.Maybe (fromJust, mapMaybe, maybeToList, isNothing)
 import qualified Data.List as List
 
+import Data.Comp
+
 type Pos = (Int, Int)
 
 data ItemChain f = ItemChain Pos (FeatureStr f)
@@ -260,18 +262,18 @@ derivationItem :: Ord f => DerivForest f -> Item f -> [Derivation f String]
 derivationItem df i = (Set.toList $ Mmap.find i df) >>= derivationOp df
 
 derivationOp :: Ord f => DerivForest f -> DerivOp f -> [Derivation f String]
-derivationOp _  (OpAxiom  li)    = [Select li]
-derivationOp df (OpMerge1 i1 i2) = [ Merge1 d1 d2
+derivationOp _  (OpAxiom  li)    = [ Term $ Select li]
+derivationOp df (OpMerge1 i1 i2) = [ Term $ Merge1 d1 d2
                                    | d1 <- derivationItem df i1
                                    , d2 <- derivationItem df i2
                                    ]
-derivationOp df (OpMerge2 i1 i2) = [ Merge2 d1 d2
+derivationOp df (OpMerge2 i1 i2) = [ Term $ Merge2 d1 d2
                                    | d1 <- derivationItem df i1
                                    , d2 <- derivationItem df i2
                                    ]
-derivationOp df (OpMerge3 i1 i2) = [ Merge3 d1 d2
+derivationOp df (OpMerge3 i1 i2) = [ Term $ Merge3 d1 d2
                                    | d1 <- derivationItem df i1
                                    , d2 <- derivationItem df i2
                                    ]
-derivationOp df (OpMove1 i1)     = [ Move1 d1 | d1 <- derivationItem df i1 ]
-derivationOp df (OpMove2 i1)     = [ Move2 d1 | d1 <- derivationItem df i1 ]
+derivationOp df (OpMove1 i1)     = [ Term $ Move1 d1 | d1 <- derivationItem df i1 ]
+derivationOp df (OpMove2 i1)     = [ Term $ Move2 d1 | d1 <- derivationItem df i1 ]
