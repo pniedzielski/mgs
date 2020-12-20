@@ -3,16 +3,15 @@
 module Text.MG
   ( module Text.MG.Feature
   , module Text.MG.Grammar
+  , module Text.MG.Expr
   , DerivationF(..)
   , Derivation
-  , Chain(..)
-  , Expr(..)
   , DerivationTree(..)
   ) where
 
 import Text.MG.Feature
 import Text.MG.Grammar
-import Data.Map (Map)
+import Text.MG.Expr
 import Data.Tree (Tree(..))
 import Data.Comp
 
@@ -28,14 +27,6 @@ data DerivationF f β α
 
 
 type Derivation f β = Term (DerivationF f β)
-
-
-data Chain f β = Chain (FeatureStr f) β
-  deriving (Eq, Ord, Show, Read, Functor)
-
--- Lexical?, main chain, movers
-data Expr f β = Expr Bool (Chain f β) (Map f (Chain f β))
-  deriving (Eq, Ord, Show, Read, Functor)
 
 
 -------------------------------------------------------------------------------
