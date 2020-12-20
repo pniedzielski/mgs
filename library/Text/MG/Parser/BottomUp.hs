@@ -164,11 +164,15 @@ flipNegFirst :: Eq f => (Item f -> Item f -> Maybe (Item f, DerivOp f)) -> Item 
 flipNegFirst op i1@(Item _ (ItemChain _ (f :| _)) _) i2 | pos f     = op i1 i2
                                                         | otherwise = op i2 i1
 
-merge1All :: (Eq f, Ord f) =>  Chart f -> Item f -> [(Item f, DerivOp f)]
+type UnaryOp  f = Item f -> [(Item f, DerivOp f)]
+type BinaryOp f = Item f -> Item f -> Maybe (Item f, DerivOp f)
+type BinaryContext f = Chart f -> Item f -> [(Item f, DerivOp f)]
+
+merge1All :: (Eq f, Ord f) => BinaryContext f
 merge1All c i@(Item _ (ItemChain (p,q) _) _) =
   mapMaybe (flipNegFirst merge1 i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
 
-merge1 :: Eq f => Item f -> Item f -> Maybe (Item f, DerivOp f)
+merge1 :: Eq f => BinaryOp f
 merge1 i1@(Item True (ItemChain (p,q1) (Selectional f1 :| fs)) _)
        i2@(Item _    (ItemChain (q2,v) (Categorial  f2 :| [])) mvrs)
   | f1 == f2
@@ -176,11 +180,11 @@ merge1 i1@(Item True (ItemChain (p,q1) (Selectional f1 :| fs)) _)
     = Just (Item False (ItemChain (p,v) (NonEmpty.fromList fs)) mvrs, OpMerge1 i1 i2)
 merge1 _ _ = Nothing
 
-merge2All :: (Eq f, Ord f) =>  Chart f -> Item f -> [(Item f, DerivOp f)]
+merge2All :: (Eq f, Ord f) => BinaryContext f
 merge2All c i@(Item _ (ItemChain (p,q) _) _) =
   mapMaybe (flipNegFirst merge2 i) $ (Set.toList $ q `Mmap.find` leftEdges c) ++ (Set.toList $ p `Mmap.find` rightEdges c)
 
-merge2 :: (Eq f, Ord f) => Item f -> Item f -> Maybe (Item f, DerivOp f)
+merge2 :: (Eq f, Ord f) => BinaryOp f
 merge2 i1@(Item False (ItemChain (p1,q) (Selectional f1 :| fs)) mvrs1)
        i2@(Item _     (ItemChain (v,p2) (Categorial  f2 :| [])) mvrs2)
   | f1 == f2
@@ -189,11 +193,11 @@ merge2 i1@(Item False (ItemChain (p1,q) (Selectional f1 :| fs)) mvrs1)
     = Just (Item False (ItemChain (v,q) (NonEmpty.fromList fs)) (Map.union mvrs1 mvrs2), OpMerge2 i1 i2)
 merge2 _ _ = Nothing
 
-merge3All :: (Eq f, Ord f) => Chart f -> Item f -> [(Item f, DerivOp f)]
+merge3All :: (Eq f, Ord f) => BinaryContext f
 merge3All c i =
   mapMaybe (flipNegFirst merge3 i) $ (Set.toList $ allItems c)
 
-merge3 :: (Eq f, Ord f) => Item f -> Item f -> Maybe (Item f, DerivOp f)
+merge3 :: (Eq f, Ord f) => BinaryOp f
 merge3 i1@(Item _ (ItemChain (p,q) (Selectional f1 :| fs)) mvrs1)
        i2@(Item _ (ItemChain (v,w) (Categorial  f2 :| (Licensee f:fs'))) mvrs2)
   | f1 == f2
@@ -202,7 +206,7 @@ merge3 i1@(Item _ (ItemChain (p,q) (Selectional f1 :| fs)) mvrs1)
     = Just (Item False (ItemChain (p,q) (NonEmpty.fromList fs)) (Map.unions [mvrs1,mvrs2, Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))]), OpMerge3 i1 i2)
 merge3 _ _ = Nothing
 
-move1 :: (Eq f, Ord f) => Item f -> [(Item f, DerivOp f)]
+move1 :: (Eq f, Ord f) => UnaryOp f
 move1 i@(Item False (ItemChain (p1,q) (Licenser f :| fs)) mvrs)
     = [ (Item False (ItemChain (v,q) (NonEmpty.fromList fs)) mvrs', OpMove1 i)
       | ItemChain (v,p2) fs' <- mvr
@@ -214,7 +218,7 @@ move1 i@(Item False (ItemChain (p1,q) (Licenser f :| fs)) mvrs)
     mvrs' = f `Map.delete` mvrs
 move1 _ = []
 
-move2 :: (Eq f, Ord f) => Item f -> [(Item f, DerivOp f)]
+move2 :: (Eq f, Ord f) => UnaryOp f
 move2 i@(Item False (ItemChain (p,q) (Licenser f :| fs)) mvrs)
     = [ (Item False (ItemChain (p,q) (NonEmpty.fromList fs)) $
         Map.insert (feat fs') (ItemChain (v,w) (NonEmpty.fromList fs')) mvrs', OpMove2 i)
@@ -261,7 +265,7 @@ derivations :: Ord f => DerivForest f -> [Item f] -> [Derivation f String]
 derivations df is = is >>= derivationItem df
 
 derivationItem :: Ord f => DerivForest f -> Item f -> [Derivation f String]
-derivationItem df i = (Set.toList $ Mmap.find i df) >>= derivationOp df
+derivationItem df i = Set.toList (Mmap.find i df) >>= derivationOp df
 
 derivationOp :: Ord f => DerivForest f -> DerivOp f -> [Derivation f String]
 derivationOp _  (OpAxiom  li)    = [ Term $ Select li]
