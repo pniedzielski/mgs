@@ -4,6 +4,7 @@ import qualified Data.Set as Set
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Tree as Tree
 import Text.MG
+import Text.MG.Parser.BottomUp
 
 
 testMe :: Grammar Char String -> String -> IO ()
