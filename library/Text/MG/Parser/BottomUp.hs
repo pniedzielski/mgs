@@ -77,7 +77,6 @@ initialAgenda g s = Agenda (empties ++ lexItems)
 data Chart f = Chart
     { leftEdges  :: SetMultimap Int (Item f)
     , rightEdges :: SetMultimap Int (Item f)
-    , movers     :: SetMultimap f   (Item f)
     , allItems   :: Set (Item f)
     }
   deriving (Eq, Ord, Show, Read)
@@ -86,7 +85,6 @@ emptyChart :: Chart f
 emptyChart = Chart
   { leftEdges  = Mmap.empty
   , rightEdges = Mmap.empty
-  , movers     = Mmap.empty
   , allItems   = Set.empty
   }
 
@@ -104,14 +102,11 @@ doneItems c f n = Set.toList parses
     parseFilter _ = False
 
 addChartItem :: Ord f => Chart f -> Item f -> Chart f
-addChartItem c i@(Item _ (ItemMainChain (l,r) _) mvrs)
+addChartItem c i@(Item _ (ItemMainChain (l,r) _) _)
     = Chart { leftEdges  = Mmap.prepend l i $ leftEdges  c
             , rightEdges = Mmap.prepend r i $ rightEdges c
-            , movers     = movers'
             , allItems   = Set.insert i $ allItems c
             }
-  where
-    movers' = foldr (`Mmap.prepend` i) (movers c) (Map.keys mvrs)
 
 
 -------------------------------------------------------------------------------
