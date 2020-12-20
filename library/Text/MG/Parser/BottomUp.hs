@@ -164,13 +164,13 @@ fillChart g s =
         forest' <- readSTRef forest
         return (chart', forest'))
 
-flipNegFirst :: Eq f => (Item f -> Item f -> Maybe (Item f, DerivOp f)) -> Item f -> Item f -> Maybe (Item f, DerivOp f)
-flipNegFirst op i1@(Item _ (ItemMainChain _ (f :| _)) _) i2 | pos f     = op i1 i2
-                                                        | otherwise = op i2 i1
-
 type UnaryOp  f = Item f -> [(Item f, DerivOp f)]
 type BinaryOp f = Item f -> Item f -> Maybe (Item f, DerivOp f)
 type BinaryContext f = Chart f -> Item f -> [(Item f, DerivOp f)]
+
+flipNegFirst :: Eq f => BinaryOp f -> BinaryOp f
+flipNegFirst op i1@(Item _ (ItemMainChain _ (f :| _)) _) i2 | pos f     = op i1 i2
+                                                            | otherwise = op i2 i1
 
 merge1All :: (Eq f, Ord f) => BinaryContext f
 merge1All c i@(Item _ (ItemMainChain (p,q) _) _) =
