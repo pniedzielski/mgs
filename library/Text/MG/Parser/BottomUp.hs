@@ -25,6 +25,8 @@ import Data.STRef
 import Control.Monad.Loops (iterateUntil)
 import Data.Maybe (fromJust, mapMaybe, maybeToList, isNothing)
 import qualified Data.List as List
+import Data.Vector (Vector)
+import qualified Data.Vector as Vector
 
 import Data.Comp
 
@@ -75,16 +77,16 @@ initialAgenda g s = Agenda (empties ++ lexItems)
 
 
 data Chart f = Chart
-    { leftEdges  :: SetMultimap Int (Item f)
-    , rightEdges :: SetMultimap Int (Item f)
+    { leftEdges  :: Vector (Set (Item f))
+    , rightEdges :: Vector (Set (Item f))
     , allItems   :: Set (Item f)
     }
   deriving (Eq, Ord, Show, Read)
 
-emptyChart :: Chart f
-emptyChart = Chart
-  { leftEdges  = Mmap.empty
-  , rightEdges = Mmap.empty
+initialChart :: Grammar f String -> [String] -> Chart f
+initialChart _ s = Chart
+  { leftEdges  = Vector.replicate (length s + 1) Set.empty
+  , rightEdges = Vector.replicate (length s + 1) Set.empty
   , allItems   = Set.empty
   }
 
@@ -94,8 +96,8 @@ isChartDone c f n = not . null $ doneItems c f n
 doneItems :: (Eq f, Ord f) => Chart f -> f -> Int -> [Item f]
 doneItems c f n = Set.toList parses
   where
-    ls = 0 `Mmap.find` leftEdges  c
-    rs = n `Mmap.find` rightEdges c
+    ls = leftEdges  c Vector.! 0
+    rs = rightEdges c Vector.! n
     full = Set.intersection ls rs
     parses = Set.filter parseFilter full
     parseFilter (Item _ (ItemMainChain _ (Categorial f' :| [])) mvrs) = f == f' && Map.null mvrs
@@ -103,10 +105,14 @@ doneItems c f n = Set.toList parses
 
 addChartItem :: Ord f => Chart f -> Item f -> Chart f
 addChartItem c i@(Item _ (ItemMainChain (l,r) _) _)
-    = Chart { leftEdges  = Mmap.prepend l i $ leftEdges  c
-            , rightEdges = Mmap.prepend r i $ rightEdges c
-            , allItems   = Set.insert i $ allItems c
+    = Chart { leftEdges  = le Vector.// [(l, Set.insert i $ le Vector.! l)]
+            , rightEdges = re Vector.// [(r, Set.insert i $ re Vector.! r)]
+            , allItems   = Set.insert i ai
             }
+  where
+    le = leftEdges  c
+    re = rightEdges c
+    ai = allItems   c
 
 
 -------------------------------------------------------------------------------
@@ -153,7 +159,7 @@ parse g s = snd $ fillChart g s
 fillChart :: (Eq f, Ord f) => Grammar f String -> [String] -> (Chart f, DerivForest f)
 fillChart g s =
     runST (do
-        chart  <- newSTRef emptyChart
+        chart  <- newSTRef $ initialChart  g s
         forest <- newSTRef $ initialForest g s
         agenda <- newSTRef $ initialAgenda g s
         _ <- iterateUntil isEmptyAgenda
@@ -177,10 +183,10 @@ fillChart g s =
         return (chart', forest'))
 
 itemsAtLeftEdge :: Ord f => Int -> Chart f -> [Item f]
-itemsAtLeftEdge n = Set.toList . Mmap.find n . leftEdges
+itemsAtLeftEdge n c = Set.toList $ leftEdges c Vector.! n
 
 itemsAtRightEdge :: Ord f => Int -> Chart f -> [Item f]
-itemsAtRightEdge n = Set.toList . Mmap.find n . rightEdges
+itemsAtRightEdge n c = Set.toList $ rightEdges c Vector.! n
 
 itemsAnywhere :: Chart f -> [Item f]
 itemsAnywhere = Set.toList . allItems
