@@ -83,8 +83,8 @@ data Chart f = Chart
     }
   deriving (Eq, Ord, Show, Read)
 
-initialChart :: Grammar f String -> [String] -> Chart f
-initialChart _ s = Chart
+initialChart :: [String] -> ST s (STRef s (Chart f))
+initialChart s = newSTRef $ Chart
   { leftEdges  = Vector.replicate (length s + 1) Set.empty
   , rightEdges = Vector.replicate (length s + 1) Set.empty
   , allItems   = Set.empty
@@ -159,7 +159,7 @@ parse g s = snd $ fillChart g s
 fillChart :: (Eq f, Ord f) => Grammar f String -> [String] -> (Chart f, DerivForest f)
 fillChart g s =
     runST (do
-        chart  <- newSTRef $ initialChart  g s
+        chart  <- initialChart s
         forest <- newSTRef $ initialForest g s
         agenda <- newSTRef $ initialAgenda g s
         _ <- iterateUntil isEmptyAgenda
