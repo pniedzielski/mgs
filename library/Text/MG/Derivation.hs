@@ -19,7 +19,7 @@ data DerivationF f β α
     | Merge3 α α
     | Move1  α
     | Move2  α
-  deriving (Eq, Show, Read, Functor)
+  deriving (Eq, Ord, Show, Read, Functor)
 
 type Derivation f β = Term (DerivationF f β)
 
