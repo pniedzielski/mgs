@@ -40,7 +40,7 @@ main = do
   testMe g2 "who did Brutus see"
   testMe g2 "who did see Brutus"
   let (chart, df) = fillChart g2 $ words "Brutus did stab Caesar"
-  putStrLn . Tree.drawTree . cata derivationTree . head $ derivations df (doneItems chart 'c' 4)
+  putStrLn . Tree.drawTree . cata derivationTree . head $ concatMap (derivations df) (doneItems chart 'c' 4)
 
   testMe g3 ""
   testMe g3 "a b c"
@@ -50,7 +50,7 @@ main = do
   testMe g3 "a a a b b b c c c"
   let (chart', df') = fillChart g3 $ words "a a b b c c"
   putStrLn $ showChart chart'
-  putStrLn . Tree.drawTree . cata derivationTree . head $ derivations df' (doneItems chart' 'd' 6)
+  putStrLn . Tree.drawTree . cata derivationTree . head $ concatMap (derivations df') (doneItems chart' 'd' 6)
 
 
 dp1 :: String -> LexItem Char String
