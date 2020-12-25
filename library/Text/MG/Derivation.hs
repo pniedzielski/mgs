@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFunctor, FlexibleInstances #-}
+{-# LANGUAGE DeriveFunctor, DeriveTraversable, DeriveFoldable, FlexibleInstances #-}
 
 module Text.MG.Derivation
   ( DerivationF(..)
@@ -19,7 +19,7 @@ data DerivationF f β α
     | Merge3 α α
     | Move1  α
     | Move2  α
-  deriving (Eq, Ord, Show, Read, Functor)
+  deriving (Eq, Ord, Show, Read, Functor, Foldable, Traversable)
 
 type Derivation f β = Term (DerivationF f β)
 

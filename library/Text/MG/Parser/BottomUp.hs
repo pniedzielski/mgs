@@ -289,25 +289,19 @@ showFeature (Licenser f)    = [' ', '+', f]
 -------------------------------------------------------------------------------
 
 
-derivations :: Ord f => DerivForest f -> [Item f] -> [Derivation f String]
-derivations df is = is >>= derivationItem df
+-- | Compute the 'Derivation's of a list of 'Item's, according to a
+-- derivation forest.
+derivations
+    :: Ord f
+    => DerivForest f
+    -> [Item f]
+    -> [Derivation f String]
+derivations = concatMap . anaM . derivationCoalgM
 
-derivationItem :: Ord f => DerivForest f -> Item f -> [Derivation f String]
-derivationItem df i = Set.toList (Mmap.find i df) >>= derivationOp df
-
-derivationOp :: Ord f => DerivForest f -> DerivOp f -> [Derivation f String]
-derivationOp _  (Select  li)   = [ Term $ Select li]
-derivationOp df (Merge1 i1 i2) = [ Term $ Merge1 d1 d2
-                                   | d1 <- derivationItem df i1
-                                   , d2 <- derivationItem df i2
-                                   ]
-derivationOp df (Merge2 i1 i2) = [ Term $ Merge2 d1 d2
-                                   | d1 <- derivationItem df i1
-                                   , d2 <- derivationItem df i2
-                                   ]
-derivationOp df (Merge3 i1 i2) = [ Term $ Merge3 d1 d2
-                                   | d1 <- derivationItem df i1
-                                   , d2 <- derivationItem df i2
-                                   ]
-derivationOp df (Move1 i1)     = [ Term $ Move1 d1 | d1 <- derivationItem df i1 ]
-derivationOp df (Move2 i1)     = [ Term $ Move2 d1 | d1 <- derivationItem df i1 ]
+-- | A monadic coalgebra to generate a list of 'Derivation's from a
+-- single 'Item', according to a derivation forest.
+derivationCoalgM
+    :: Ord f
+    => DerivForest f
+    -> CoalgM [] (DerivationF f String) (Item f)
+derivationCoalgM df item = Set.toList $ Mmap.find item df
