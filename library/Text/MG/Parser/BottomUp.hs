@@ -289,14 +289,14 @@ showFeature (Licenser f)    = [' ', '+', f]
 -------------------------------------------------------------------------------
 
 
--- | Compute the 'Derivation's of a list of 'Item's, according to a
--- derivation forest.
+-- | Compute the 'Derivation's of an 'Item', according to a derivation
+-- forest.
 derivations
     :: Ord f
     => DerivForest f
-    -> [Item f]
+    -> Item f
     -> [Derivation f String]
-derivations = concatMap . anaM . derivationCoalgM
+derivations = anaM . derivationCoalgM
 
 -- | A monadic coalgebra to generate a list of 'Derivation's from a
 -- single 'Item', according to a derivation forest.
