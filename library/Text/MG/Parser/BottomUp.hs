@@ -118,14 +118,7 @@ addChartItem c i@(Item _ (ItemMainChain (l,r) _) _)
 -------------------------------------------------------------------------------
 
 
-data DerivOp f
-    = OpAxiom  (LexItem f String)
-    | OpMerge1 (Item f) (Item f)
-    | OpMerge2 (Item f) (Item f)
-    | OpMerge3 (Item f) (Item f)
-    | OpMove1  (Item f)
-    | OpMove2  (Item f)
-  deriving (Eq, Ord, Show, Read)
+type DerivOp f = DerivationF f String (Item f)
 
 type DerivForest f = SetMultimap (Item f) (DerivOp f)
 
@@ -136,12 +129,12 @@ initialForest g s = Mmap.fromList (empties ++ lexItems)
     empties = [ (Item SimplexExpr
                  (ItemMainChain (i,i) (lexItemFeatures li))
                  Map.empty,
-                 OpAxiom li)
+                 Select li)
               | i  <- [0..length s]
               , li <- emptyItems g
               ]
     paired = zip s [0..]
-    lexItems = paired >>= \(x,i) -> map (\li -> (Item SimplexExpr (ItemMainChain (i,i+1) (lexItemFeatures li)) Map.empty, OpAxiom li)) $ valueItems g x
+    lexItems = paired >>= \(x,i) -> map (\li -> (Item SimplexExpr (ItemMainChain (i,i+1) (lexItemFeatures li)) Map.empty, Select li)) $ valueItems g x
 
 
 -------------------------------------------------------------------------------
@@ -208,7 +201,7 @@ merge1 i1@(Item SimplexExpr (ItemMainChain (p,q1) (Selectional f1 :| fs)) _)
        i2@(Item _           (ItemMainChain (q2,v) (Categorial  f2 :| [])) mvrs)
   | f1 == f2
   , q1 == q2
-    = Just (Item ComplexExpr (ItemMainChain (p,v) (NonEmpty.fromList fs)) mvrs, OpMerge1 i1 i2)
+    = Just (Item ComplexExpr (ItemMainChain (p,v) (NonEmpty.fromList fs)) mvrs, Merge1 i1 i2)
 merge1 _ _ = Nothing
 
 merge2All :: (Eq f, Ord f) => BinaryContext f
@@ -221,7 +214,7 @@ merge2 i1@(Item ComplexExpr (ItemMainChain (p1,q) (Selectional f1 :| fs)) mvrs1)
   | f1 == f2
   , p1 == p2
   , Map.null $ Map.intersection mvrs1 mvrs2
-    = Just (Item ComplexExpr (ItemMainChain (v,q) (NonEmpty.fromList fs)) (Map.union mvrs1 mvrs2), OpMerge2 i1 i2)
+    = Just (Item ComplexExpr (ItemMainChain (v,q) (NonEmpty.fromList fs)) (Map.union mvrs1 mvrs2), Merge2 i1 i2)
 merge2 _ _ = Nothing
 
 merge3All :: (Eq f, Ord f) => BinaryContext f
@@ -234,12 +227,12 @@ merge3 i1@(Item _ (ItemMainChain (p,q) (Selectional f1 :| fs)) mvrs1)
   | f1 == f2
   , w <= p || q <= v
   , Map.null $ Map.intersection (Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))) $ Map.intersection mvrs1 mvrs2
-    = Just (Item ComplexExpr (ItemMainChain (p,q) (NonEmpty.fromList fs)) (Map.unions [mvrs1,mvrs2, Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))]), OpMerge3 i1 i2)
+    = Just (Item ComplexExpr (ItemMainChain (p,q) (NonEmpty.fromList fs)) (Map.unions [mvrs1,mvrs2, Map.singleton f (ItemChain (v,w) (Licensee f :| fs'))]), Merge3 i1 i2)
 merge3 _ _ = Nothing
 
 move1 :: (Eq f, Ord f) => UnaryOp f
 move1 i@(Item ComplexExpr (ItemMainChain (p1,q) (Licenser f :| fs)) mvrs)
-    = [ (Item ComplexExpr (ItemMainChain (v,q) (NonEmpty.fromList fs)) mvrs', OpMove1 i)
+    = [ (Item ComplexExpr (ItemMainChain (v,q) (NonEmpty.fromList fs)) mvrs', Move1 i)
       | ItemChain (v,p2) fs' <- mvr
       , p1 == p2
       , length fs' == 1
@@ -252,7 +245,7 @@ move1 _ = []
 move2 :: (Eq f, Ord f) => UnaryOp f
 move2 i@(Item ComplexExpr (ItemMainChain (p,q) (Licenser f :| fs)) mvrs)
     = [ (Item ComplexExpr (ItemMainChain (p,q) (NonEmpty.fromList fs)) $
-        Map.insert (feat fs') (ItemChain (v,w) (NonEmpty.fromList fs')) mvrs', OpMove2 i)
+        Map.insert (feat fs') (ItemChain (v,w) (NonEmpty.fromList fs')) mvrs', Move2 i)
       | ItemChain (v,w) (_ :| fs') <- mvr
       , not $ null fs'
       , isNothing $ feat fs' `Map.lookup` mvrs'
@@ -303,18 +296,18 @@ derivationItem :: Ord f => DerivForest f -> Item f -> [Derivation f String]
 derivationItem df i = Set.toList (Mmap.find i df) >>= derivationOp df
 
 derivationOp :: Ord f => DerivForest f -> DerivOp f -> [Derivation f String]
-derivationOp _  (OpAxiom  li)    = [ Term $ Select li]
-derivationOp df (OpMerge1 i1 i2) = [ Term $ Merge1 d1 d2
+derivationOp _  (Select  li)   = [ Term $ Select li]
+derivationOp df (Merge1 i1 i2) = [ Term $ Merge1 d1 d2
                                    | d1 <- derivationItem df i1
                                    , d2 <- derivationItem df i2
                                    ]
-derivationOp df (OpMerge2 i1 i2) = [ Term $ Merge2 d1 d2
+derivationOp df (Merge2 i1 i2) = [ Term $ Merge2 d1 d2
                                    | d1 <- derivationItem df i1
                                    , d2 <- derivationItem df i2
                                    ]
-derivationOp df (OpMerge3 i1 i2) = [ Term $ Merge3 d1 d2
+derivationOp df (Merge3 i1 i2) = [ Term $ Merge3 d1 d2
                                    | d1 <- derivationItem df i1
                                    , d2 <- derivationItem df i2
                                    ]
-derivationOp df (OpMove1 i1)     = [ Term $ Move1 d1 | d1 <- derivationItem df i1 ]
-derivationOp df (OpMove2 i1)     = [ Term $ Move2 d1 | d1 <- derivationItem df i1 ]
+derivationOp df (Move1 i1)     = [ Term $ Move1 d1 | d1 <- derivationItem df i1 ]
+derivationOp df (Move2 i1)     = [ Term $ Move2 d1 | d1 <- derivationItem df i1 ]
