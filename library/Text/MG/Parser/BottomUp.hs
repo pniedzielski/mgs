@@ -104,8 +104,8 @@ doneItems c f n = Set.toList parses
     parseFilter (Item _ (ItemChain _ (Categorial f' :| [])) mvrs) = f == f' && Map.null mvrs
     parseFilter _ = False
 
-addChartItem :: Ord f => Chart f -> Item f -> Chart f
-addChartItem c i@(Item _ (ItemChain (l,r) _) _)
+addChartItem :: Ord f => Item f -> Chart f -> Chart f
+addChartItem i@(Item _ (ItemChain (l,r) _) _) c
     = Chart { leftEdges  = le Vector.// [(l, Set.insert i $ le Vector.! l)]
             , rightEdges = re Vector.// [(r, Set.insert i $ re Vector.! r)]
             , allItems   = Set.insert i ai
@@ -169,7 +169,7 @@ fillChart g s =
                                ++ move2 item
                      let newItems = List.filter (\x -> not . Set.member x $ allItems chart') . List.delete item . map fst $ proven
                      writeSTRef agenda $ Agenda (rest `List.union` newItems)
-                     writeSTRef chart  $ addChartItem chart' item
+                     writeSTRef chart  $ addChartItem item chart'
                      writeSTRef forest $ foldr (uncurry Mmap.prepend) forest' proven
                      readSTRef agenda)
         chart'  <- readSTRef chart
