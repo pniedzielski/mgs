@@ -83,6 +83,12 @@ module Text.MG.Feature
     -- $feature
     Feature(..)
 
+    -- ** Operation
+
+    -- $operation
+  , mergeable
+  , moveable
+
     -- ** Polarity
 
     -- $polarity
@@ -129,6 +135,45 @@ data Feature f
     --   positive features checked by Move.
     | Licenser f
   deriving (Eq, Ord, Show, Read, Functor)
+
+
+-------------------------------------------------------------------------------
+--                                                                 OPERATION --
+-------------------------------------------------------------------------------
+
+
+{-$operation
+
+Each feature triggers a specific structure-building operation. There
+are only two such operations in simplified MGs, __Merge__ and
+__Move__, so each feature either triggers __Merge__ or triggers
+__Move__.
+-}
+
+
+-- | Whether a 'Feature' drives the __Merge__ operation.
+--
+--   Note that a role-annotated feature must either drive __Merge__ or
+--   __Move__, but not both:
+--
+--   prop> mergeable f `xor` moveable f
+mergeable ∷ Feature f → Bool
+mergeable (Selectional _) = True
+mergeable (Categorial _)  = True
+mergeable (Licenser _)    = False
+mergeable (Licensee _)    = False
+
+-- | Whether a 'Feature' drives the __Move__ operation.
+--
+--   Note that a role-annotated feature must either drive __Merge__ or
+--   __Move__, but not both:
+--
+--   prop> moveable f `xor` mergable f
+moveable ∷ Feature f → Bool
+moveable (Selectional _) = False
+moveable (Categorial _)  = False
+moveable (Licenser _)    = True
+moveable (Licensee _)    = True
 
 
 -------------------------------------------------------------------------------
