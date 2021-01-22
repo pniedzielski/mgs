@@ -28,6 +28,7 @@ library:
   source-dirs: library
   dependencies:
     - base
+    - base-unicode-symbols
     - compdata
     - hashmap
     - containers
