@@ -24,6 +24,13 @@ ghc-options: -Wall -O3
 default-extensions:
   - UnicodeSyntax
 
+library:
+  source-dirs: library
+  dependencies:
+    - base
+    - base-unicode-symbols
+    - containers
+
 executables:
   mgs:
     source-dirs: executable
@@ -31,6 +38,7 @@ executables:
     dependencies:
       - base
       - base-unicode-symbols
+      - mgs
     ghc-options:
       -rtsopts
       -threaded
@@ -43,6 +51,7 @@ tests:
     dependencies:
       - base
       - base-unicode-symbols
+      - mgs
       - tasty
     ghc-options:
       - -rtsopts
