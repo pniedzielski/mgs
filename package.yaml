@@ -30,6 +30,7 @@ executables:
     main: Main.hs
     dependencies:
       - base
+      - base-unicode-symbols
     ghc-options:
       -rtsopts
       -threaded
