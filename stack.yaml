@@ -3,4 +3,6 @@ resolver: lts-17.7
 packages:
 - .
 
-extra-deps: []
+extra-deps:
+  - recursion-2.2.4.3
+  - composition-prelude-3.0.0.2

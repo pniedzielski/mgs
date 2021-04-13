@@ -31,6 +31,7 @@ executables:
     dependencies:
       - base
       - base-unicode-symbols
+      - recursion
     ghc-options:
       -rtsopts
       -threaded

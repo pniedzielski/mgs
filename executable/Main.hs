@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Main (main) where
 
+import Control.Recursion( Fix(..) )
 import Data.List.NonEmpty( NonEmpty(..) )
 
 main ∷ IO ()
@@ -18,3 +19,5 @@ data DerivationF f α β
     | Move1  β
     | Move2  β
   deriving (Eq, Ord, Show, Functor)
+
+type Derivation f α = Fix (DerivationF f α)
