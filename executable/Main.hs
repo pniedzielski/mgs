@@ -23,6 +23,10 @@ main = do
 data LexItem f α = LexItem (NonEmpty f) α
   deriving (Eq, Ord, Show, Functor)
 
+li1, li2 ∷ LexItem Char T.Text
+li1 = LexItem ('a' :| ['b']) "a"
+li2 = LexItem ('c' :| []) "b"
+
 data DerivationF f α β
     = Select (LexItem f α)
     | Merge1 β β
@@ -35,8 +39,8 @@ data DerivationF f α β
 type Derivation f α = Fix (DerivationF f α)
 
 deriv1, deriv2, deriv3, deriv4 ∷ Derivation Char T.Text
-deriv1 = Fix (Select (LexItem ('a' :| ['b']) "a"))
-deriv2 = Fix (Select (LexItem ('c' :| []) "b"))
+deriv1 = Fix (Select li1)
+deriv2 = Fix (Select li2)
 deriv3 = Fix (Merge1 deriv1 deriv2)
 deriv4 = Fix (Merge2 deriv3 (Fix (Merge2 deriv3 deriv3)))
 
