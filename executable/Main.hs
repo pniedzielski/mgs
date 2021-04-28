@@ -6,6 +6,7 @@ module Main (main) where
 
 import           Control.Recursion( Fix(..), cata )
 import           Data.List.NonEmpty( NonEmpty(..) )
+import qualified Data.List.NonEmpty        as NonEmpty
 import qualified Data.Text                 as T
 import qualified Data.Text.IO              as TIO
 import qualified Data.Text.Prettyprint.Doc as PP
@@ -15,6 +16,8 @@ import           Prelude.Unicode
 
 main ∷ IO ()
 main = do
+  TIO.putStrLn ∘ renderLexItem $ li1
+  TIO.putStrLn ∘ renderLexItem $ li2
   TIO.putStrLn ∘ cata renderAlg $ deriv3
   putDoc ∘ PP.pretty $ deriv4
   TIO.putStrLn ""
@@ -22,6 +25,11 @@ main = do
 
 data LexItem f α = LexItem (NonEmpty f) α
   deriving (Eq, Ord, Show, Functor)
+
+renderLexItem ∷ LexItem Char T.Text → T.Text
+renderLexItem (LexItem fs α) = α <> " ∷ " <> fStr
+  where
+    fStr = T.pack ∘ NonEmpty.toList ∘ NonEmpty.intersperse ' ' $ fs
 
 li1, li2 ∷ LexItem Char T.Text
 li1 = LexItem ('a' :| ['b']) "a"
@@ -44,8 +52,8 @@ deriv2 = Fix (Select li2)
 deriv3 = Fix (Merge1 deriv1 deriv2)
 deriv4 = Fix (Merge2 deriv3 (Fix (Merge2 deriv3 deriv3)))
 
-renderAlg ∷ DerivationF f T.Text T.Text → T.Text
-renderAlg (Select (LexItem _ s)) = s
+renderAlg ∷ DerivationF Char T.Text T.Text → T.Text
+renderAlg (Select li)   = "[" <> renderLexItem li <> "]"
 renderAlg (Merge1 x x') = "(Merge " <> x <> " " <> x' <> ")"
 renderAlg (Merge2 x x') = "(Merge " <> x <> " " <> x' <> ")"
 renderAlg (Merge3 x x') = "(Merge " <> x <> " " <> x' <> ")"
@@ -67,9 +75,9 @@ prettyAlg (Move2  x)    = sexpr [ "Move",  x     ]
 sexpr ∷ [PP.Doc ann] → PP.Doc ann
 sexpr = PP.parens ∘ PP.align ∘ PP.vsep
 
-treeAlg ∷ DerivationF f T.Text (Tree.Tree String) → Tree.Tree String
-treeAlg (Select (LexItem _ s)) = Tree.Node
-    { Tree.rootLabel = T.unpack s
+treeAlg ∷ DerivationF Char T.Text (Tree.Tree String) → Tree.Tree String
+treeAlg (Select li) = Tree.Node
+    { Tree.rootLabel = T.unpack ∘ renderLexItem $ li
     , Tree.subForest = []
     }
 treeAlg (Merge1 x x') = Tree.Node
