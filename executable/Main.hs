@@ -10,6 +10,7 @@ import qualified Data.Text                 as T
 import qualified Data.Text.IO              as TIO
 import qualified Data.Text.Prettyprint.Doc as PP
 import           Data.Text.Prettyprint.Doc.Render.Text( putDoc )
+import qualified Data.Tree                 as Tree
 import           Prelude.Unicode
 
 main ∷ IO ()
@@ -17,6 +18,7 @@ main = do
   TIO.putStrLn ∘ cata renderAlg $ deriv3
   putDoc ∘ PP.pretty $ deriv4
   TIO.putStrLn ""
+  putStrLn ∘ Tree.drawTree ∘ cata treeAlg $ deriv4
 
 data LexItem f α = LexItem (NonEmpty f) α
   deriving (Eq, Ord, Show, Functor)
@@ -60,3 +62,29 @@ prettyAlg (Move2  x)    = sexpr [ "Move",  x     ]
 
 sexpr ∷ [PP.Doc ann] → PP.Doc ann
 sexpr = PP.parens ∘ PP.align ∘ PP.vsep
+
+treeAlg ∷ DerivationF f T.Text (Tree.Tree String) → Tree.Tree String
+treeAlg (Select (LexItem _ s)) = Tree.Node
+    { Tree.rootLabel = T.unpack s
+    , Tree.subForest = []
+    }
+treeAlg (Merge1 x x') = Tree.Node
+    { Tree.rootLabel = "Merge"
+    , Tree.subForest = [x, x']
+    }
+treeAlg (Merge2 x x') = Tree.Node
+    { Tree.rootLabel = "Merge"
+    , Tree.subForest = [x, x']
+    }
+treeAlg (Merge3 x x') = Tree.Node
+    { Tree.rootLabel = "Merge"
+    , Tree.subForest = [x, x']
+    }
+treeAlg (Move1 x) = Tree.Node
+    { Tree.rootLabel = "Move"
+    , Tree.subForest = [x]
+    }
+treeAlg (Move2 x) = Tree.Node
+    { Tree.rootLabel = "Move"
+    , Tree.subForest = [x]
+    }
