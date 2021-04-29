@@ -41,7 +41,7 @@ data LexItem f α = LexItem (NonEmpty (Feature f)) α
   deriving (Eq, Ord, Show, Functor)
 
 renderLexItem ∷ LexItem Char T.Text → T.Text
-renderLexItem (LexItem fs α) = α <> " ∷ " <> fStr
+renderLexItem (LexItem fs α) = "[" <> α <> " ∷ " <> fStr <> "]"
   where
     fStr = fold ∘ NonEmpty.intersperse " " $ renderFeature <$> fs
 
@@ -69,7 +69,7 @@ deriv4 = Fix (Merge2 deriv3 (Fix (Merge2 deriv3 deriv3)))
 renderDerivation ∷ Derivation Char T.Text → T.Text
 renderDerivation = cata renderAlg
   where
-    renderAlg (Select li)   = "[" <> renderLexItem li <> "]"
+    renderAlg (Select li)   = renderLexItem li
     renderAlg (Merge1 x x') = "(Merge " <> x <> " " <> x' <> ")"
     renderAlg (Merge2 x x') = "(Merge " <> x <> " " <> x' <> ")"
     renderAlg (Merge3 x x') = "(Merge " <> x <> " " <> x' <> ")"
