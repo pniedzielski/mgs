@@ -5,6 +5,7 @@
 module Main (main) where
 
 import           Control.Recursion( Fix(..), cata )
+import           Data.Foldable( fold )
 import           Data.List.NonEmpty( NonEmpty(..) )
 import qualified Data.List.NonEmpty        as NonEmpty
 import qualified Data.Text                 as T
@@ -36,17 +37,17 @@ renderFeature (Selectional f) = "=" `T.snoc` f
 renderFeature (Licenser f)    = "+" `T.snoc` f
 renderFeature (Licensee f)    = "-" `T.snoc` f
 
-data LexItem f α = LexItem (NonEmpty f) α
+data LexItem f α = LexItem (NonEmpty (Feature f)) α
   deriving (Eq, Ord, Show, Functor)
 
 renderLexItem ∷ LexItem Char T.Text → T.Text
 renderLexItem (LexItem fs α) = α <> " ∷ " <> fStr
   where
-    fStr = T.pack ∘ NonEmpty.toList ∘ NonEmpty.intersperse ' ' $ fs
+    fStr = fold ∘ NonEmpty.intersperse " " $ renderFeature <$> fs
 
 li1, li2 ∷ LexItem Char T.Text
-li1 = LexItem ('a' :| ['b']) "a"
-li2 = LexItem ('c' :| []) "b"
+li1 = LexItem (Selectional 'a' :| [Categorial 'b']) "a"
+li2 = LexItem (Categorial 'c' :| []) "b"
 
 data DerivationF f α β
     = Select (LexItem f α)
