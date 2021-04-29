@@ -23,6 +23,19 @@ main = do
   TIO.putStrLn ""
   putStrLn ∘ Tree.drawTree ∘ cata treeAlg $ deriv4
 
+data Feature f
+    = Categorial f
+    | Selectional f
+    | Licenser f
+    | Licensee f
+  deriving (Eq, Ord, Show, Functor)
+
+renderFeature ∷ Feature Char → T.Text
+renderFeature (Categorial f)  = T.singleton  f
+renderFeature (Selectional f) = "=" `T.snoc` f
+renderFeature (Licenser f)    = "+" `T.snoc` f
+renderFeature (Licensee f)    = "-" `T.snoc` f
+
 data LexItem f α = LexItem (NonEmpty f) α
   deriving (Eq, Ord, Show, Functor)
 
