@@ -5,15 +5,14 @@
 module Main (main) where
 
 import           Control.Recursion( Fix(..), cata )
-import           Data.Foldable( fold )
 import           Data.List.NonEmpty( NonEmpty(..) )
-import qualified Data.List.NonEmpty        as NonEmpty
 import qualified Data.Text                 as T
 import qualified Data.Text.IO              as TIO
 import qualified Data.Text.Prettyprint.Doc as PP
 import           Data.Text.Prettyprint.Doc.Render.Text( putDoc )
 import qualified Data.Tree                 as Tree
 import           Text.MG.Feature
+import           Text.MG.Grammar
 import           Prelude.Unicode
 
 main ∷ IO ()
@@ -24,14 +23,6 @@ main = do
   putDoc ∘ PP.pretty $ deriv4
   TIO.putStrLn ""
   putStrLn ∘ Tree.drawTree ∘ treeDerivation $ deriv4
-
-data LexItem f α = LexItem (NonEmpty (Feature f)) α
-  deriving (Eq, Ord, Show, Functor)
-
-renderLexItem ∷ LexItem T.Text T.Text → T.Text
-renderLexItem (LexItem fs α) = "[" <> α <> " ∷ " <> fStr <> "]"
-  where
-    fStr = fold ∘ NonEmpty.intersperse " " $ renderFeature <$> fs
 
 li1, li2 ∷ LexItem T.Text T.Text
 li1 = LexItem (Selectional "a" :| [Categorial "b"]) "a"
