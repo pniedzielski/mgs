@@ -32,6 +32,7 @@ executables:
       - base
       - base-unicode-symbols
       - containers
+      - mgs
       - prettyprinter
       - recursion
       - text
@@ -39,6 +40,13 @@ executables:
       -rtsopts
       -threaded
       -with-rtsopts=-N
+
+library:
+  source-dirs: library
+  dependencies:
+    - base
+    - base-unicode-symbols
+    - text
 
 tests:
   mgs-test-suite:

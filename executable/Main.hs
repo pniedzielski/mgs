@@ -13,6 +13,7 @@ import qualified Data.Text.IO              as TIO
 import qualified Data.Text.Prettyprint.Doc as PP
 import           Data.Text.Prettyprint.Doc.Render.Text( putDoc )
 import qualified Data.Tree                 as Tree
+import           Text.MG.Feature
 import           Prelude.Unicode
 
 main ∷ IO ()
@@ -23,19 +24,6 @@ main = do
   putDoc ∘ PP.pretty $ deriv4
   TIO.putStrLn ""
   putStrLn ∘ Tree.drawTree ∘ treeDerivation $ deriv4
-
-data Feature f
-    = Categorial f
-    | Selectional f
-    | Licenser f
-    | Licensee f
-  deriving (Eq, Ord, Show, Functor)
-
-renderFeature ∷ Feature T.Text → T.Text
-renderFeature (Categorial f)  = f
-renderFeature (Selectional f) = "=" <> f
-renderFeature (Licenser f)    = "+" <> f
-renderFeature (Licensee f)    = "-" <> f
 
 data LexItem f α = LexItem (NonEmpty (Feature f)) α
   deriving (Eq, Ord, Show, Functor)
