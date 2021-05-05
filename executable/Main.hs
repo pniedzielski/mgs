@@ -11,6 +11,7 @@ import qualified Data.Text.IO              as TIO
 import qualified Data.Text.Prettyprint.Doc as PP
 import           Data.Text.Prettyprint.Doc.Render.Text( putDoc )
 import qualified Data.Tree                 as Tree
+import           Text.Megaparsec
 import           Text.MG.Derivation
 import           Text.MG.Feature
 import           Text.MG.Grammar
@@ -18,6 +19,8 @@ import           Prelude.Unicode
 
 main ∷ IO ()
 main = do
+  parseTest (parseFeatureList <* eof) "=d +k =d  v -foc"
+  parseTest (parseFeatureList <* eof) "d =n -k"
   TIO.putStrLn ∘ renderLexItem $ li1
   TIO.putStrLn ∘ renderLexItem $ li2
   TIO.putStrLn ∘ renderDerivation $ deriv3

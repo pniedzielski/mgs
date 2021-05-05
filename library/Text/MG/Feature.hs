@@ -20,10 +20,17 @@ module Text.MG.Feature
   , opposite
     -- * Rendering
   , renderFeature
+    -- * Parsing
+  , parseFeature
+  , parseFeatureList
   ) where
 
-import Data.Text( Text )
-import Prelude.Unicode
+import           Data.List.NonEmpty hiding( cons )
+import           Data.Text( Text, pack, cons )
+import           Data.Void
+import           Prelude.Unicode
+import           Text.Megaparsec hiding( State )
+import           Text.Megaparsec.Char( alphaNumChar, char, letterChar, space, space1 )
 
 data Feature f
     = Categorial f
@@ -85,3 +92,18 @@ renderFeature (Categorial f)  = f
 renderFeature (Selectional f) = "=" <> f
 renderFeature (Licenser f)    = "+" <> f
 renderFeature (Licensee f)    = "-" <> f
+
+parseFeature ∷ Parsec Void Text (Feature Text)
+parseFeature = choice
+    [              Categorial  <$> identifier
+    , char '~' *> (Categorial  <$> identifier)
+    , char '=' *> (Selectional <$> identifier)
+    , char '+' *> (Licenser    <$> identifier)
+    , char '-' *> (Licensee    <$> identifier)
+    ]
+  where
+    identifier = (cons) <$> letterChar
+                        <*> (pack <$> many (alphaNumChar <|> char '_'))
+
+parseFeatureList ∷ Parsec Void Text (NonEmpty (Feature Text))
+parseFeatureList = fromList <$> sepBy1 parseFeature space1 <* space
