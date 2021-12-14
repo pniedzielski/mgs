@@ -78,6 +78,7 @@ basic feature set and/or content type.
 --   formatted.
 formatFeature :: Feature T.Text → T.Text
 formatFeature = formatFeatureWithFmt id
+{-# INLINABLE formatFeature #-}
 
 
 -- | Format a @Feature f@ using a function that formats the basic
@@ -98,6 +99,7 @@ formatFeatureWithFmt fmt (Licenser    f) = "+" ⊕ fmt f
 --   formatted.
 formatFeatureStr ∷ FeatureStr T.Text → T.Text
 formatFeatureStr = formatFeatureStrWithFmt id
+{-# INLINABLE formatFeatureStr #-}
 
 
 -- | Format a @FeatureStr f@ using a function that formats the basic
@@ -116,6 +118,7 @@ formatFeatureStrWithFmt fmt
 --   have already been formatted.
 formatLexItem ∷ LexItem T.Text T.Text → T.Text
 formatLexItem = formatLexItemWithFmt id id
+{-# INLINABLE formatLexItem #-}
 
 
 -- | Format a @LexItem f β@ using a function that formats the basic
@@ -139,6 +142,7 @@ formatLexItemWithFmt fFmt βFmt (LexItem fs β)
 --   have already been formatted.
 formatGrammar ∷ Grammar T.Text T.Text → T.Text
 formatGrammar = formatGrammarWithFmt id id
+{-# INLINABLE formatGrammar #-}
 
 
 -- | Format a @Grammar f β@ using a function that formats the basic
