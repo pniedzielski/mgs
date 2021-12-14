@@ -47,7 +47,7 @@ import           Data.Monoid.Unicode
 import qualified Data.Set as S
 
 import Text.MG.Feature( Feature(..), FeatureStr )
-import Text.MG.Grammar( LexItem(..), lexItemFeatures, lexItemContent, Grammar(..) )
+import Text.MG.Grammar( LexItem(..), Grammar(..) )
 
 
 -------------------------------------------------------------------------------
@@ -77,16 +77,16 @@ basic feature set and/or content type.
 -- | Format a @Feature f@ whose basic feature set has already been
 --   formatted.
 formatFeature :: Feature T.Text → T.Text
-formatFeature (Categorial  f) =       f
-formatFeature (Selectional f) = "=" ⊕ f
-formatFeature (Licensee    f) = "-" ⊕ f
-formatFeature (Licenser    f) = "+" ⊕ f
+formatFeature = formatFeatureWithFmt id
 
 
 -- | Format a @Feature f@ using a function that formats the basic
 --   feature set @f@.
 formatFeatureWithFmt ∷ (f → T.Text) → Feature f → T.Text
-formatFeatureWithFmt fmt = formatFeature ∘ fmap fmt
+formatFeatureWithFmt fmt (Categorial  f) =       fmt f
+formatFeatureWithFmt fmt (Selectional f) = "=" ⊕ fmt f
+formatFeatureWithFmt fmt (Licensee    f) = "-" ⊕ fmt f
+formatFeatureWithFmt fmt (Licenser    f) = "+" ⊕ fmt f
 
 
 -------------------------------------------------------------------------------
@@ -97,13 +97,14 @@ formatFeatureWithFmt fmt = formatFeature ∘ fmap fmt
 -- | Format a @FeatureStr f@ whose basic feature set has already been
 --   formatted.
 formatFeatureStr ∷ FeatureStr T.Text → T.Text
-formatFeatureStr = T.intercalate "," ∘ NE.toList ∘ fmap formatFeature
+formatFeatureStr = formatFeatureStrWithFmt id
 
 
 -- | Format a @FeatureStr f@ using a function that formats the basic
 --   feature set @f@.
 formatFeatureStrWithFmt ∷ (f → T.Text) → FeatureStr f → T.Text
-formatFeatureStrWithFmt fmt = formatFeatureStr ∘ fmap (fmap fmt)
+formatFeatureStrWithFmt fmt
+    = T.intercalate "," ∘ NE.toList ∘ fmap (formatFeatureWithFmt fmt)
 
 
 -------------------------------------------------------------------------------
@@ -114,8 +115,7 @@ formatFeatureStrWithFmt fmt = formatFeatureStr ∘ fmap (fmap fmt)
 -- | Format a @LexItem f β@ whose basic feature set and content type
 --   have already been formatted.
 formatLexItem ∷ LexItem T.Text T.Text → T.Text
-formatLexItem (LexItem fs β)
-    = "[" ⊕ β ⊕ "] ∷ [" ⊕ formatFeatureStr fs ⊕ "]"
+formatLexItem = formatLexItemWithFmt id id
 
 
 -- | Format a @LexItem f β@ using a function that formats the basic
@@ -126,19 +126,8 @@ formatLexItemWithFmt
     → (β → T.Text)
     → LexItem f β
     → T.Text
-formatLexItemWithFmt fFmt βFmt = formatLexItem ∘ liFmt fFmt βFmt
-
-
--- | Reach into a lexical item and format its basic feature set and
---   content type.
-liFmt
-    ∷ (f → T.Text)
-    → (β → T.Text)
-    → LexItem f β
-    → LexItem T.Text T.Text
-liFmt fFmt βFmt li
-  = LexItem (fmap fFmt <$> lexItemFeatures li)
-            (βFmt ∘ lexItemContent $ li)
+formatLexItemWithFmt fFmt βFmt (LexItem fs β)
+    = "[" ⊕ βFmt β ⊕ "] ∷ [" ⊕ formatFeatureStrWithFmt fFmt fs ⊕ "]"
 
 
 -------------------------------------------------------------------------------
@@ -149,18 +138,24 @@ liFmt fFmt βFmt li
 -- | Format a @Grammar f β@ whose basic feature set and content type
 --   have already been formatted.
 formatGrammar ∷ Grammar T.Text T.Text → T.Text
-formatGrammar g = lexiconStr ⊕ "\n" ⊕ startCategoryStr
-  where
-    lexiconStr       = T.intercalate " " ∘ fmap (\s → s ⊕ ".")  ∘ fmap formatLexItem ∘ S.toList $ lexicon g
-    startCategoryStr = "startCategory(" ⊕ startCategory g ⊕ ").\n"
+formatGrammar = formatGrammarWithFmt id id
 
 
 -- | Format a @Grammar f β@ using a function that formats the basic
 --   feature set @f@ along with a function that formats the content
 --   type @β@.
-formatGrammarWithFmt ∷ (f → T.Text) → (β → T.Text) → Grammar f β → T.Text
-formatGrammarWithFmt fFmt βFmt g = formatGrammar g'
+formatGrammarWithFmt
+    ∷ (f → T.Text)
+    → (β → T.Text)
+    → Grammar f β
+    → T.Text
+formatGrammarWithFmt fFmt βFmt g
+    = lexiconStr ⊕ "\n" ⊕ startCategoryStr
   where
-    g' = Grammar{ startCategory = fFmt ∘ startCategory $ g
-                , lexicon       = S.map (liFmt fFmt βFmt) ∘ lexicon $ g
-                }
+    lexiconStr = T.intercalate " "
+               ∘ fmap (\li → formatLexItemWithFmt fFmt βFmt li ⊕ ".")
+               ∘ S.toList
+               $ lexicon g
+    startCategoryStr = "startCategory("
+                     ⊕ fFmt (startCategory g)
+                     ⊕ ").\n"
