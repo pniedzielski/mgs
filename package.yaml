@@ -32,8 +32,10 @@ library:
     - compdata
     - hashmap
     - containers
+    - megaparsec
     - more-containers
     - monad-loops
+    - parser-combinators
     - text
     - tree-view
     - vector

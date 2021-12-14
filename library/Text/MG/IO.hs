@@ -38,16 +38,30 @@ module Text.MG.IO
     -- ** Grammar
   , formatGrammar
   , formatGrammarWithFmt
+
+    -- * Parsing
+
+    -- $parsing
+
+    -- ** Feature
+  , parseFeature
+  , parseFeatureStr
   ) where
 
-import qualified Data.Text as T
-import           Prelude.Unicode
+import Text.MG.Feature
+import Text.MG.Grammar
+
+import           Control.Applicative hiding (many, some)
+import qualified Control.Applicative.Combinators.NonEmpty as NEComb
 import qualified Data.List.NonEmpty as NE
 import           Data.Monoid.Unicode
 import qualified Data.Set as S
-
-import Text.MG.Feature( Feature(..), FeatureStr )
-import Text.MG.Grammar( LexItem(..), Grammar(..) )
+import qualified Data.Text as T
+import           Data.Void(Void)
+import           Prelude.Unicode
+import           Text.Megaparsec(Parsec, try, some, many)
+import           Text.Megaparsec.Char(space, char, alphaNumChar, printChar)
+import qualified Text.Megaparsec.Char.Lexer as L
 
 
 -------------------------------------------------------------------------------
@@ -163,3 +177,67 @@ formatGrammarWithFmt fFmt βFmt g
     startCategoryStr = "startCategory("
                      ⊕ fFmt (startCategory g)
                      ⊕ ").\n"
+
+
+-------------------------------------------------------------------------------
+--                                                                   PARSING --
+-------------------------------------------------------------------------------
+
+
+{-$parsing
+
+_Formatting_ a Minimalist Grammar object is the process of taking the
+object and turning it into a human-readable string representation.
+Because the types in this library are polymorphic over the basic
+feature set and over the content type of each lexical item, we provide
+two variants for each formatting function in this module: one takes
+the object with its basic feature set and/or content type already
+formatted (i.e., instantiated to the @Data.Text.Text@ type), and one
+takes the polymorphic object along with functions that will format the
+basic feature set and/or content type.
+-}
+
+
+-------------------------------------------------------------------------------
+--                                                             PARSE FEATURE --
+-------------------------------------------------------------------------------
+
+sc ∷ Parsec Void T.Text ()
+sc = L.space
+    space1
+    (L.skipLineComment "%")
+    (L.skipBlockComment "/*" "*/")
+
+lexeme ∷ Parser α → Parser α
+lexeme = L.lexeme sc
+
+symbol ∷ T.Text → Parser T.Text
+symbol = L.symbol sc
+
+parseFeature ∷ Parsec Void T.Text (Feature T.Text)
+parseFeature = space *>
+    (   try (Selectional ∘ T.pack <$> (char '=' *> parseBasicFeature))
+    <|> try (Licenser    ∘ T.pack <$> (char '+' *> parseBasicFeature))
+    <|> try (Licensee    ∘ T.pack <$> (char '-' *> parseBasicFeature))
+    <|>     (Categorial  ∘ T.pack <$>              parseBasicFeature))
+  where
+    parseBasicFeature = some alphaNumChar
+
+parseFeatureStr ∷ Parsec Void T.Text (FeatureStr T.Text)
+parseFeatureStr = space *>
+  NEComb.sepBy1 parseFeature (space <* char ',')
+
+parseLexItem ∷ Parsec Void T.Text (LexItem T.Text T.Text)
+parseLexItem = space *>
+    (flip LexItem <$> (parseBracketed parseContent <* space <* char '∷' <* space)
+                  <*> (parseBracketed parseFeatureStr))
+  where
+    parseContent = space *> (T.pack <$> many printChar)
+
+parseBracketed ∷ Parsec Void T.Text α → Parsec Void T.Text α
+parseBracketed p = char '[' *> p <* space <* char ']'
+
+parseGrammar ∷ Parsec Void T.Text (Grammar T.Text T.Text)
+parseGrammar = do
+  space
+  parseLexItem
