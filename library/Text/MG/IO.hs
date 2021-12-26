@@ -44,8 +44,7 @@ module Text.MG.IO
     -- $parsing
 
     -- ** Feature
-  , parseFeature
-  , parseFeatureStr
+  , parseMG
   ) where
 
 import Text.MG.Feature
@@ -61,7 +60,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import           Data.Void(Void)
 import           Prelude.Unicode
-import           Text.Megaparsec(Parsec, try, many, choice, between, satisfy)
+import           Text.Megaparsec(Parsec, eof, many, choice, between, satisfy)
 import           Text.Megaparsec.Char(space1, lowerChar)
 import qualified Text.Megaparsec.Char.Lexer as L
 
@@ -272,18 +271,18 @@ atom = T.pack <$>
     stringAtom = quoted (many character)
 
 parseFeature ∷ Parser (Feature T.Text)
-parseFeature =
-    choice [ try $ parseFeatureType "=" Selectional
-           , try $ parseFeatureType "+" Licenser
-           , try $ parseFeatureType "-" Licensee
-           ,       parseFeatureType ""  Categorial
+parseFeature = featureType <*> basicFeature
+
+basicFeature ∷ Parser (T.Text)
+basicFeature = atom
+
+featureType ∷ Parser (T.Text → Feature T.Text)
+featureType =
+    choice [ Selectional <$ equals
+           , Licenser    <$ plus
+           , Licensee    <$ minus
+           , return Categorial
            ]
-
-parseBasicFeature ∷ Parser (T.Text)
-parseBasicFeature = atom
-
-parseFeatureType ∷ T.Text → (T.Text → Feature T.Text) → Parser (Feature T.Text)
-parseFeatureType s f = f <$> (symbol s *> parseBasicFeature)
 
 parseFeatureStr ∷ Parser (FeatureStr T.Text)
 parseFeatureStr = parseFeature `NEComb.sepBy1` comma
@@ -299,7 +298,7 @@ parseGrammarStatement ∷ Parser α → Parser α
 parseGrammarStatement p = p <* period
 
 parseStartCat ∷ Parser (T.Text)
-parseStartCat = startCatToken *> (parened atom)
+parseStartCat = startCatToken *> (parened basicFeature)
 
 parseGrammar ∷ Parser (Grammar T.Text T.Text)
 parseGrammar = do
@@ -310,3 +309,6 @@ parseGrammar = do
         Grammar { startCategory = c
                 , lexicon = S.fromList lex1 `S.union` S.fromList lex2
                 }
+
+parseMG ∷ Parser (Grammar T.Text T.Text)
+parseMG = sc *> parseGrammar <* sc <* eof
