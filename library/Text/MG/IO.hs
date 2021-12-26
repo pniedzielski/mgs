@@ -53,14 +53,16 @@ import Text.MG.Grammar
 
 import           Control.Applicative hiding (many, some)
 import qualified Control.Applicative.Combinators.NonEmpty as NEComb
+import           Control.Monad(void)
+import           Data.Char(isLetter, isDigit)
 import qualified Data.List.NonEmpty as NE
 import           Data.Monoid.Unicode
 import qualified Data.Set as S
 import qualified Data.Text as T
 import           Data.Void(Void)
 import           Prelude.Unicode
-import           Text.Megaparsec(Parsec, try, some, many)
-import           Text.Megaparsec.Char(space, char, alphaNumChar, printChar)
+import           Text.Megaparsec(Parsec, try, many, choice, between, satisfy)
+import           Text.Megaparsec.Char(space1, lowerChar)
 import qualified Text.Megaparsec.Char.Lexer as L
 
 
@@ -202,7 +204,9 @@ basic feature set and/or content type.
 --                                                             PARSE FEATURE --
 -------------------------------------------------------------------------------
 
-sc ∷ Parsec Void T.Text ()
+type Parser α = Parsec Void T.Text α
+
+sc ∷ Parser ()
 sc = L.space
     space1
     (L.skipLineComment "%")
@@ -211,33 +215,98 @@ sc = L.space
 lexeme ∷ Parser α → Parser α
 lexeme = L.lexeme sc
 
-symbol ∷ T.Text → Parser T.Text
-symbol = L.symbol sc
+symbol ∷ T.Text → Parser ()
+symbol = void ∘ L.symbol sc
 
-parseFeature ∷ Parsec Void T.Text (Feature T.Text)
-parseFeature = space *>
-    (   try (Selectional ∘ T.pack <$> (char '=' *> parseBasicFeature))
-    <|> try (Licenser    ∘ T.pack <$> (char '+' *> parseBasicFeature))
-    <|> try (Licensee    ∘ T.pack <$> (char '-' *> parseBasicFeature))
-    <|>     (Categorial  ∘ T.pack <$>              parseBasicFeature))
+equals, plus, minus, comma, period, lBracket, rBracket, lParen, rParen, quote, sep ∷ Parser ()
+equals   = symbol "="
+plus     = symbol "+"
+minus    = symbol "-"
+comma    = symbol ","
+period   = symbol "."
+lBracket = symbol "["
+rBracket = symbol "]"
+lParen   = symbol "("
+rParen   = symbol ")"
+quote    = symbol "'"
+sep      = symbol "∷" <|> symbol "::"
+
+startCatToken ∷ Parser ()
+startCatToken = symbol "startCategory"
+
+quoted, bracketed, parened ∷ Parser α → Parser α
+quoted    = between quote quote
+bracketed = between lBracket rBracket
+parened   = between lParen rParen
+
+character ∷ Parser Char
+character = satisfy $
+    \s → isLetter s
+       ∨ isDigit s
+       ∨ s ≡ '_'
+       ∨ s ≡ '+'
+       ∨ s ≡ '-'
+       ∨ s ≡ '*'
+       ∨ s ≡ '/'
+       ∨ s ≡ '\\'
+       ∨ s ≡ '^'
+       ∨ s ≡ '~'
+       ∨ s ≡ ':'
+       ∨ s ≡ '.'
+       ∨ s ≡ '?'
+       ∨ s ≡ '#'
+       ∨ s ≡ '$'
+       ∨ s ≡ '&'
+
+simpleCharacter ∷ Parser Char
+simpleCharacter = satisfy $
+    \s → isLetter s
+       ∨ isDigit s
+       ∨ s ≡ '_'
+
+atom ∷ Parser T.Text
+atom = T.pack <$>
+    (lexeme $ (simpleAtom <|> stringAtom))
   where
-    parseBasicFeature = some alphaNumChar
+    simpleAtom = (:) <$> lowerChar <*> (many simpleCharacter)
+    stringAtom = quoted (many character)
 
-parseFeatureStr ∷ Parsec Void T.Text (FeatureStr T.Text)
-parseFeatureStr = space *>
-  NEComb.sepBy1 parseFeature (space <* char ',')
+parseFeature ∷ Parser (Feature T.Text)
+parseFeature =
+    choice [ try $ parseFeatureType "=" Selectional
+           , try $ parseFeatureType "+" Licenser
+           , try $ parseFeatureType "-" Licensee
+           ,       parseFeatureType ""  Categorial
+           ]
 
-parseLexItem ∷ Parsec Void T.Text (LexItem T.Text T.Text)
-parseLexItem = space *>
-    (flip LexItem <$> (parseBracketed parseContent <* space <* char '∷' <* space)
-                  <*> (parseBracketed parseFeatureStr))
-  where
-    parseContent = space *> (T.pack <$> many printChar)
+parseBasicFeature ∷ Parser (T.Text)
+parseBasicFeature = atom
 
-parseBracketed ∷ Parsec Void T.Text α → Parsec Void T.Text α
-parseBracketed p = char '[' *> p <* space <* char ']'
+parseFeatureType ∷ T.Text → (T.Text → Feature T.Text) → Parser (Feature T.Text)
+parseFeatureType s f = f <$> (symbol s *> parseBasicFeature)
 
-parseGrammar ∷ Parsec Void T.Text (Grammar T.Text T.Text)
+parseFeatureStr ∷ Parser (FeatureStr T.Text)
+parseFeatureStr = parseFeature `NEComb.sepBy1` comma
+
+parseLexItem ∷ Parser (LexItem T.Text T.Text)
+parseLexItem = do
+    content ← bracketed atom
+    ()      ← sep
+    fs      ← bracketed parseFeatureStr
+    return $ LexItem fs content
+
+parseGrammarStatement ∷ Parser α → Parser α
+parseGrammarStatement p = p <* period
+
+parseStartCat ∷ Parser (T.Text)
+parseStartCat = startCatToken *> (parened atom)
+
+parseGrammar ∷ Parser (Grammar T.Text T.Text)
 parseGrammar = do
-  space
-  parseLexItem
+    lex1 ← many ∘ parseGrammarStatement $ parseLexItem
+    c    ← parseGrammarStatement parseStartCat
+    lex2 ← many ∘ parseGrammarStatement $ parseLexItem
+    return $
+        Grammar { startCategory = c
+                , lexicon = S.fromList lex1 `S.union` S.fromList lex2
+                }
