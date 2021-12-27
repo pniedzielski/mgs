@@ -185,6 +185,7 @@ moveable (Selectional _) = False
 moveable (Categorial _)  = False
 moveable (Licenser _)    = True
 moveable (Licensee _)    = True
+{-# INLINABLE moveable #-}
 
 
 -------------------------------------------------------------------------------
