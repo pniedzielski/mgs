@@ -172,6 +172,7 @@ mergeable (Selectional _) = True
 mergeable (Categorial _)  = True
 mergeable (Licenser _)    = False
 mergeable (Licensee _)    = False
+{-# INLINABLE mergeable #-}
 
 -- | Whether a 'Feature' drives the __Move__ operation.
 --
