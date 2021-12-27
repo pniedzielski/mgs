@@ -246,6 +246,7 @@ pos (Licensee _)    = False
 --   prop> neg f `xor` pos f
 neg ∷ Feature f → Bool
 neg = not ∘ pos
+{-# INLINABLE neg #-}
 
 
 -------------------------------------------------------------------------------
