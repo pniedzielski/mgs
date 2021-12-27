@@ -82,6 +82,7 @@ module Text.MG.Feature
 
     -- $feature
     Feature(..)
+  , basicFeature
 
     -- ** Operation
 
@@ -135,6 +136,14 @@ data Feature f
     --   positive features checked by Move.
     | Licenser f
   deriving (Eq, Ord, Show, Read, Functor)
+
+-- | The basic feature on which a given role-annotated feature is
+--   built.
+basicFeature ∷ Feature f → f
+basicFeature (Selectional f) = f
+basicFeature (Categorial  f) = f
+basicFeature (Licenser    f) = f
+basicFeature (Licensee    f) = f
 
 
 -------------------------------------------------------------------------------
