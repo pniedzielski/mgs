@@ -144,6 +144,7 @@ basicFeature (Selectional f) = f
 basicFeature (Categorial  f) = f
 basicFeature (Licenser    f) = f
 basicFeature (Licensee    f) = f
+{-# INLINABLE basicFeature #-}
 
 
 -------------------------------------------------------------------------------
