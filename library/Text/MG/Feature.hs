@@ -236,6 +236,7 @@ pos (Selectional _) = True
 pos (Categorial _)  = False
 pos (Licenser _)    = True
 pos (Licensee _)    = False
+{-# INLINABLE pos #-}
 
 -- | Whether a 'Feature' has negative polarity.
 --
