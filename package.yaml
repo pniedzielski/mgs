@@ -61,7 +61,10 @@ tests:
     dependencies:
     - base
     - base-unicode-symbols
+    - mgs
+    - HUnit
     - tasty
+    - tasty-hunit
     ghc-options:
     - -rtsopts
     - -threaded
