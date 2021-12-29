@@ -46,17 +46,16 @@ data Item f = Item ExprType (ItemChain f) (Map f (ItemChain f))
 -------------------------------------------------------------------------------
 
 
-newtype Agenda f = Agenda [Item f]
-  deriving (Eq, Ord, Show, Read)
+type Agenda f = [Item f]
 
 isEmptyAgenda :: Agenda f -> Bool
-isEmptyAgenda (Agenda xs) = List.null xs
+isEmptyAgenda = List.null
 
 nextAgendaItem :: Agenda f -> Maybe (Item f, [Item f])
-nextAgendaItem (Agenda xs) = List.uncons xs
+nextAgendaItem = List.uncons
 
 initialAgenda :: Grammar f String -> [String] -> Agenda f
-initialAgenda g s = Agenda (empties ++ lexItems)
+initialAgenda g s = empties ++ lexItems
   where
     empties = [ Item SimplexExpr
                 (ItemChain (i,i) (lexItemFeatures li))
@@ -166,7 +165,7 @@ fillChart g s =
                                ++ move1 item
                                ++ move2 item
                      let newItems = List.filter (\x -> not . Set.member x $ allItems chart') . List.delete item . map fst $ proven
-                     writeSTRef agenda $ Agenda (rest `List.union` newItems)
+                     writeSTRef agenda $ rest `List.union` newItems
                      writeSTRef chart  $ addChartItem item chart'
                      writeSTRef forest $ foldr (uncurry Mmap.prepend) forest' proven
                      readSTRef agenda)
