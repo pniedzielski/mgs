@@ -2,6 +2,7 @@ module Main (main) where
 
 import Data.Maybe ( fromJust )
 import qualified Data.Tree
+import qualified Data.Tree.View
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Text.Megaparsec ( parseMaybe )
@@ -14,8 +15,8 @@ import System.Environment ( getArgs )
 
 -------------------------------------------------------------------------------
 
-drawTree ∷ Data.Tree.Tree T.Text → T.Text
-drawTree = T.pack ∘ Data.Tree.drawTree ∘ fmap T.unpack
+drawTree ∷ Data.Tree.Tree T.Text → IO ()
+drawTree = Data.Tree.View.drawTree ∘ fmap T.unpack
 
 main ∷ IO ()
 main = do
@@ -29,4 +30,4 @@ main = do
   TIO.putStr $ showChart chart'
   let n = length ∘ T.words $ str
   let c = startCategory grammar
-  TIO.putStr ∘ drawTree ∘ derivationTree ∘ head $ concatMap (derivations df') (doneItems chart' c n)
+  drawTree ∘ derivationTree ∘ head $ concatMap (derivations df') (doneItems chart' c n)
