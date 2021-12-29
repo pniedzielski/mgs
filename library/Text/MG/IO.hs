@@ -172,8 +172,8 @@ formatGrammarWithFmt
 formatGrammarWithFmt fFmt βFmt g
     = lexiconStr ⊕ "\n" ⊕ startCategoryStr
   where
-    lexiconStr = T.intercalate " "
-               ∘ fmap (\li → formatLexItemWithFmt fFmt βFmt li ⊕ ".")
+    lexiconStr = T.concat
+               ∘ fmap (\li → formatLexItemWithFmt fFmt βFmt li ⊕ ".\n")
                ∘ S.toList
                $ lexicon g
     startCategoryStr = "startCategory("
