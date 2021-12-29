@@ -50,12 +50,10 @@ newtype Agenda f = Agenda [Item f]
   deriving (Eq, Ord, Show, Read)
 
 isEmptyAgenda :: Agenda f -> Bool
-isEmptyAgenda (Agenda []) = True
-isEmptyAgenda _           = False
+isEmptyAgenda (Agenda xs) = List.null xs
 
 nextAgendaItem :: Agenda f -> Maybe (Item f, [Item f])
-nextAgendaItem (Agenda [])    = Nothing
-nextAgendaItem (Agenda (x:xs)) = Just (x,xs)
+nextAgendaItem (Agenda xs) = List.uncons xs
 
 initialAgenda :: Grammar f String -> [String] -> Agenda f
 initialAgenda g s = Agenda (empties ++ lexItems)
