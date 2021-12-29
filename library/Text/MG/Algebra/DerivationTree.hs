@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Text.MG.Algebra.DerivationTree
   ( derivationTree
@@ -7,19 +8,20 @@ module Text.MG.Algebra.DerivationTree
 import Text.MG.Derivation ( Derivation, DerivationF(..) )
 import Text.MG.Grammar ( lexItemContent )
 
+import qualified Data.Text as T
 import Data.Tree (Tree(..))
 import Data.Comp
 
 
-derivationTree ∷ Derivation f String → Tree String
+derivationTree ∷ Derivation f T.Text → Tree T.Text
 derivationTree = cata derivationTreeAlg
 
 class DerivationTree f where
-    derivationTreeAlg ∷ Alg f (Tree String)
+    derivationTreeAlg ∷ Alg f (Tree T.Text)
 
-instance DerivationTree (DerivationF f String) where
+instance DerivationTree (DerivationF f T.Text) where
     derivationTreeAlg (Select li)
-        = Node { rootLabel = if null $ lexItemContent li
+        = Node { rootLabel = if T.null $ lexItemContent li
                              then "ε"
                              else lexItemContent li
                , subForest = []

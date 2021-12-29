@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Text.MG.Parser.BottomUp
   ( recognize
   , parse
@@ -27,8 +29,15 @@ import Data.Maybe (fromJust, mapMaybe, maybeToList, isNothing)
 import qualified Data.List as List
 import Data.Vector (Vector)
 import qualified Data.Vector as Vector
+import qualified Data.Text as T
+
+import Prelude.Unicode
+import Data.Monoid.Unicode
 
 import Data.Comp
+
+tshow :: Show α ⇒ α → T.Text
+tshow = T.pack ∘ show
 
 
 -------------------------------------------------------------------------------
@@ -54,7 +63,7 @@ isEmptyAgenda = List.null
 nextAgendaItem :: Agenda f -> Maybe (Item f, [Item f])
 nextAgendaItem = List.uncons
 
-initialAgenda :: Grammar f String -> [String] -> Agenda f
+initialAgenda :: Grammar f T.Text -> [T.Text] -> Agenda f
 initialAgenda g s = empties ++ lexItems
   where
     empties = [ Item SimplexExpr
@@ -81,7 +90,7 @@ data Chart f = Chart
     }
   deriving (Eq, Ord, Show, Read)
 
-initialChart :: [String] -> ST s (STRef s (Chart f))
+initialChart :: [T.Text] -> ST s (STRef s (Chart f))
 initialChart s = newSTRef $ Chart
   { leftEdges  = Vector.replicate (length s + 1) Set.empty
   , rightEdges = Vector.replicate (length s + 1) Set.empty
@@ -116,12 +125,12 @@ addChartItem i@(Item _ (ItemChain (l,r) _) _) c
 -------------------------------------------------------------------------------
 
 
-type DerivOp f = DerivationF f String (Item f)
+type DerivOp f = DerivationF f T.Text (Item f)
 
 type DerivForest f = SetMultimap (Item f) (DerivOp f)
 
 
-initialForest :: Ord f => Grammar f String -> [String] -> DerivForest f
+initialForest :: Ord f => Grammar f T.Text -> [T.Text] -> DerivForest f
 initialForest g s = Mmap.fromList (empties ++ lexItems)
   where
     empties = [ (Item SimplexExpr
@@ -138,16 +147,16 @@ initialForest g s = Mmap.fromList (empties ++ lexItems)
 -------------------------------------------------------------------------------
 
 
-recognize :: (Eq f, Ord f) => Grammar f String -> [String] -> Bool
+recognize :: (Eq f, Ord f) => Grammar f T.Text -> [T.Text] -> Bool
 recognize g s =
     isChartDone chart (startCategory g) (length s)
   where
     (chart, _) = fillChart g s
 
-parse :: (Eq f, Ord f) => Grammar f String -> [String] -> DerivForest f
+parse :: (Eq f, Ord f) => Grammar f T.Text -> [T.Text] -> DerivForest f
 parse g s = snd $ fillChart g s
 
-fillChart :: (Eq f, Ord f) => Grammar f String -> [String] -> (Chart f, DerivForest f)
+fillChart :: (Eq f, Ord f) => Grammar f T.Text -> [T.Text] -> (Chart f, DerivForest f)
 fillChart g s =
     runST (do
         chart  <- initialChart s
@@ -257,28 +266,27 @@ move2 i@(Item ComplexExpr (ItemChain (p,q) (Licenser f :| fs)) mvrs)
 move2 _ = []
 
 
-showChart :: Chart Char -> String
-showChart c =
-  Set.toList (allItems c) >>= showItem
+showChart :: Chart T.Text -> T.Text
+showChart = foldMap showItem ∘ Set.toList ∘ allItems
 
-showItem :: Item Char -> String
+showItem :: Item T.Text -> T.Text
 showItem (Item SimplexExpr mainChain ms) =
-  "[" ++ showItemChain mainChain ++ (Map.elems ms >>= showItemChain) ++ "]ₛ\n"
+  "[" ⊕ showItemChain mainChain ⊕ foldMap showItemChain ms ⊕ "]ₛ\n"
 showItem (Item ComplexExpr mainChain ms) =
-  "[" ++ showItemChain mainChain ++ (Map.elems ms >>= showItemChain) ++ "]ₜ\n"
+  "[" ⊕ showItemChain mainChain ⊕ foldMap showItemChain ms ⊕ "]ₜ\n"
 
-showItemChain :: ItemChain Char -> String
+showItemChain :: ItemChain T.Text -> T.Text
 showItemChain (ItemChain (p,q) fs) =
-  "(" ++ show p ++ "," ++ show q ++ ")" ++ showFeatureStr fs
+  "(" ⊕ tshow p ⊕ "," ⊕ tshow q ⊕ ")" ⊕ showFeatureStr fs
 
-showFeatureStr :: FeatureStr Char -> String
-showFeatureStr (f :| fs) = showFeature f ++ (fs >>= showFeature)
+showFeatureStr :: FeatureStr T.Text -> T.Text
+showFeatureStr = foldMap showFeature
 
-showFeature :: Feature Char -> String
-showFeature (Categorial f)  = [' ', f]
-showFeature (Selectional f) = [' ', '=', f]
-showFeature (Licensee f)    = [' ', '-', f]
-showFeature (Licenser f)    = [' ', '+', f]
+showFeature :: Feature T.Text -> T.Text
+showFeature (Categorial f)  = " "  ⊕ f
+showFeature (Selectional f) = " =" ⊕ f
+showFeature (Licensee f)    = " -" ⊕ f
+showFeature (Licenser f)    = " +" ⊕ f
 
 
 -------------------------------------------------------------------------------
@@ -290,7 +298,7 @@ derivations
     :: Ord f
     => DerivForest f
     -> Item f
-    -> [Derivation f String]
+    -> [Derivation f T.Text]
 derivations = anaM . derivationCoalgM
 
 -- | A monadic coalgebra to generate a list of 'Derivation's from a
@@ -298,5 +306,5 @@ derivations = anaM . derivationCoalgM
 derivationCoalgM
     :: Ord f
     => DerivForest f
-    -> CoalgM [] (DerivationF f String) (Item f)
+    -> CoalgM [] (DerivationF f T.Text) (Item f)
 derivationCoalgM df item = Set.toList $ Mmap.find item df

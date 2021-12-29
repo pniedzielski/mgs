@@ -14,14 +14,15 @@ import Text.MG.Feature
 
 import Data.Set (Set)
 import qualified Data.Set as Set
+import qualified Data.Text as T
 
 -- Lexical item over syntactic features `Feature f` and nonsyntactic
 -- features α.
 data LexItem f β = LexItem (FeatureStr f) β
   deriving (Eq, Ord, Show, Read, Functor)
 
-isEmptyLexItem :: LexItem f String -> Bool
-isEmptyLexItem (LexItem _ β) = null β
+isEmptyLexItem :: LexItem f T.Text -> Bool
+isEmptyLexItem (LexItem _ β) = T.null β
 
 lexItemFeatures :: LexItem f β -> FeatureStr f
 lexItemFeatures (LexItem fs _) = fs
@@ -37,7 +38,7 @@ data Grammar f β = Grammar
     }
   deriving (Eq, Ord, Show, Read)
 
-emptyItems :: Grammar f String -> [LexItem f String]
+emptyItems :: Grammar f T.Text -> [LexItem f T.Text]
 emptyItems = Set.toList . Set.filter isEmptyLexItem . lexicon
 
 valueItems :: Eq β =>  Grammar f β -> β -> [LexItem f β]

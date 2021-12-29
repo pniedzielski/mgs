@@ -46,9 +46,12 @@ executables:
     main: Main.hs
     dependencies:
       - base
+      - base-unicode-symbols
       - mgs
       - compdata
       - containers
+      - megaparsec
+      - text
     ghc-options:
       -rtsopts
       -threaded
