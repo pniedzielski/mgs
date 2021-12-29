@@ -55,6 +55,7 @@ import qualified Control.Applicative.Combinators.NonEmpty as NEComb
 import           Control.Monad(void)
 import           Data.Char(isLetter, isDigit)
 import qualified Data.List.NonEmpty as NE
+import           Data.Maybe(fromMaybe)
 import           Data.Monoid.Unicode
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -289,10 +290,10 @@ parseFeatureStr = parseFeature `NEComb.sepBy1` comma
 
 parseLexItem ∷ Parser (LexItem T.Text T.Text)
 parseLexItem = do
-    content ← bracketed atom
+    content ← bracketed $ optional atom
     ()      ← sep
     fs      ← bracketed parseFeatureStr
-    return $ LexItem fs content
+    return $ LexItem fs $ fromMaybe "" content
 
 parseGrammarStatement ∷ Parser α → Parser α
 parseGrammarStatement p = p <* period
