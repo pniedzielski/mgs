@@ -47,7 +47,7 @@ module Text.MG.IO
   , parseMG
   ) where
 
-import Text.MG.Feature
+import Text.MG.Feature hiding (basicFeature)
 import Text.MG.Grammar
 
 import           Control.Applicative hiding (many, some)
