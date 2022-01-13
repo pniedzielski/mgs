@@ -23,11 +23,13 @@ import Data.List.NonEmpty (NonEmpty(..))
 featureCalculus ∷ (Eq f, Ord f) ⇒ Derivation f β → Maybe (Expr f ())
 featureCalculus = cataM featureCalculusAlgM
 
+type Movers f α = Map f (Chain f α)
+
 mergeMovers
     ∷ (Eq f, Ord f)
-    ⇒ Map f (Chain f α)
-    → Map f (Chain f α)
-    → Maybe (Map f (Chain f α))
+    ⇒ Movers f α
+    → Movers f α
+    → Maybe (Movers f α)
 mergeMovers mvrs1 mvrs2
   | Map.null $ Map.intersection mvrs1 mvrs2
     = return $ Map.union mvrs1 mvrs2
@@ -37,8 +39,8 @@ mergeMovers mvrs1 mvrs2
 addMover
     ∷ (Eq f, Ord f)
     ⇒ Chain f α
-    → Map f (Chain f α)
-    → Maybe (Map f (Chain f α))
+    → Movers f α
+    → Maybe (Movers f α)
 addMover mvr@(Chain fs _) mvrs
   | Licensee f :| _ ← fs
   , Map.null $ Map.intersection (Map.singleton f mvr) mvrs
@@ -49,9 +51,9 @@ addMover mvr@(Chain fs _) mvrs
 addMoverAndMerge
     ∷ (Eq f, Ord f)
     ⇒ Chain f α
-    → Map f (Chain f α)
-    → Map f (Chain f α)
-    → Maybe (Map f (Chain f α))
+    → Movers f α
+    → Movers f α
+    → Maybe (Movers f α)
 addMoverAndMerge mvr@(Chain fs _) mvrs1 mvrs2
   | Licensee f :| _ ← fs
   , Map.null ∘ Map.intersection (Map.singleton f mvr)
@@ -59,6 +61,19 @@ addMoverAndMerge mvr@(Chain fs _) mvrs1 mvrs2
     = return $ Map.unions [mvrs1, mvrs2, Map.singleton f mvr]
   | otherwise
     = fail "Movers contain overlapping features"
+
+moveMover
+    ∷ (Eq f, Ord f)
+    ⇒ f
+    → Movers f α
+    → Maybe (Chain f α, Movers f α)
+moveMover f mvrs = do
+    mvr@(Chain (Licensee _ :| fs) x) ← Map.lookup f mvrs
+    mvrs' ← if null fs
+      then return $ Map.delete f mvrs
+      else addMover (Chain (NE.fromList fs) x) $ Map.delete f mvrs
+    return (mvr, mvrs')
+
 
 class FeatureCalculus deriv f where
     featureCalculusAlgM ∷ AlgM Maybe deriv (Expr f ())
@@ -93,18 +108,14 @@ instance (Eq f, Ord f) ⇒ FeatureCalculus (DerivationF f β) f where
 
     featureCalculusAlgM (Move1 (Expr ComplexExpr (Chain (Licenser f1 :| fs) ()) mvrs)) = do
         fs' ← NE.nonEmpty fs
-        (Chain (Licensee f2 :| []) ()) ← Map.lookup f1 mvrs
+        (Chain (Licensee f2 :| []) (), mvrs') ← moveMover f1 mvrs
         unless (f1 ≡ f2) $ fail "No compatible trace"
-        let mvrs' = Map.delete f1 mvrs
         return $ Expr ComplexExpr (Chain fs' ()) mvrs'
     featureCalculusAlgM (Move1 _) = fail "Not a move1"
 
-    featureCalculusAlgM (Move2 (Expr ComplexExpr (Chain (Licenser f1 :| fs1) ()) mvrs)) = do
-        fs1' ← NE.nonEmpty fs1
-        (Chain (Licensee f2 :| fs2) ()) ← Map.lookup f1 mvrs
-        fs2' ← NE.nonEmpty fs2
+    featureCalculusAlgM (Move2 (Expr ComplexExpr (Chain (Licenser f1 :| fs) ()) mvrs)) = do
+        fs' ← NE.nonEmpty fs
+        (Chain (Licensee f2 :| []) (), mvrs') ← moveMover f1 mvrs
         unless (f1 ≡ f2) $ fail "No compatible trace"
-        let mvrs' = Map.delete f1 mvrs
-        mvrs'' ← addMover (Chain fs2' ()) mvrs'
-        return $ Expr ComplexExpr (Chain fs1' ()) mvrs''
+        return $ Expr ComplexExpr (Chain fs' ()) mvrs'
     featureCalculusAlgM (Move2 _) = fail "Not a move2"
