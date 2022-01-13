@@ -4,6 +4,7 @@
 
 module Text.MG.Algebra.FeatureCalculus
   ( featureCalculus
+  , validDerivation
   ) where
 
 import Text.MG.Derivation ( Derivation, DerivationF(..) )
@@ -16,12 +17,16 @@ import Control.Monad (unless)
 import Data.Comp
 import qualified Data.Map as Map
 import Data.Map (Map)
+import Data.Maybe (isJust)
 import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty (NonEmpty(..))
 
 
 featureCalculus ∷ (Eq f, Ord f) ⇒ Derivation f β → Maybe (Expr f ())
 featureCalculus = cataM featureCalculusAlgM
+
+validDerivation ∷ (Eq f, Ord f) ⇒ Derivation f β → Bool
+validDerivation = isJust ∘ featureCalculus
 
 type Movers f α = Map f (Chain f α)
 
