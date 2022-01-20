@@ -7,3 +7,5 @@ extra-deps:
   - git: https://github.com/pniedzielski/compdata.git
     commit: 73cffef00e68cf72bd2f2dfaa05bdcf8d0aa0c92
   - tree-view-0.5
+  - ixset-1.1.1.1
+  - syb-with-class-0.6.1.13

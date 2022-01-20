@@ -1,4 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
 
 module Text.MG.Parser.BottomUp
   ( recognize
@@ -11,12 +12,12 @@ module Text.MG.Parser.BottomUp
 
 import Text.MG.Feature
 import Text.MG.Grammar
+    ( valueItems, emptyItems, lexItemFeatures, Grammar(startCategory) )
 import Text.MG.Derivation
 import Text.MG.Expr
 
 import Data.Multimap (SetMultimap)
 import qualified Data.Multimap as Mmap
-import Data.Set (Set)
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.List.NonEmpty (NonEmpty(..))
@@ -24,11 +25,12 @@ import qualified Data.List.NonEmpty as NonEmpty
 import Control.Monad.ST
 import Data.STRef
 import Control.Monad.Loops (iterateUntil)
+import qualified Data.IxSet as Ix
+import Data.IxSet ( (@=), (|||) )
 import Data.Maybe (fromJust, mapMaybe, maybeToList, isNothing)
 import qualified Data.List as List
-import Data.Vector (Vector)
-import qualified Data.Vector as Vector
 import qualified Data.Text as T
+import           Data.Typeable (Typeable)
 
 import Prelude.Unicode
 import Control.Monad.Unicode
@@ -46,7 +48,7 @@ tshow = T.pack ∘ show
 type Pos = (Int, Int)
 
 type ItemChain f = Chain f Pos
-type Item      f = Expr  f Pos
+type Item      f = Expr f Pos
 
 
 -------------------------------------------------------------------------------
@@ -81,45 +83,87 @@ initialAgenda g s =
 -------------------------------------------------------------------------------
 
 
-data Chart f = Chart
-    { leftEdges  ∷ Vector (Set (Item f))
-    , rightEdges ∷ Vector (Set (Item f))
-    , allItems   ∷ Set (Item f)
-    }
-  deriving (Eq, Ord, Show, Read)
+newtype MainChainLeftIdx    = MainChainLeftIdx Int deriving (Eq, Ord)
+newtype MainChainRightIdx   = MainChainRightIdx Int deriving (Eq, Ord)
+newtype MainChainHeadFeat f = MainChainHeadFeat (Feature f) deriving (Eq, Ord)
+newtype MainChainTailFeats  = MainChainTailFeats Bool deriving (Eq, Ord)
+newtype MoverLeftIdx f      = MoverLeftIdx (Feature f, Int) deriving (Eq, Ord)
+newtype MoverRightIdx f     = MoverRightIdx (Feature f, Int) deriving (Eq, Ord)
+newtype MoverHeadFeat f     = MoverHeadFeat (Feature f) deriving (Eq, Ord)
+newtype MoverTailFeats f    = MoverTailFeats (Feature f, Bool) deriving (Eq, Ord)
+newtype MoversEmpty         = MoversEmpty Bool deriving (Eq, Ord)
 
-initialChart ∷ [T.Text] → ST s (STRef s (Chart f))
-initialChart s = newSTRef $ Chart
-    { leftEdges  = Vector.replicate (length s + 1) Set.empty
-    , rightEdges = Vector.replicate (length s + 1) Set.empty
-    , allItems   = Set.empty
-    }
+getMainChainLeftIdx ∷ Item f → [MainChainLeftIdx]
+getMainChainLeftIdx (Expr _ (Chain _ (l,_)) _) = [MainChainLeftIdx l]
 
-isChartDone ∷ (Eq f, Ord f) ⇒ Chart f → f → Int → Bool
+getMainChainRightIdx ∷ Item f → [MainChainRightIdx]
+getMainChainRightIdx (Expr _ (Chain _ (_,r)) _) = [MainChainRightIdx r]
+
+getExprType ∷ Item f → [ExprType]
+getExprType (Expr t _ _) = [t]
+
+getMainChainHeadFeat ∷ Item f → [MainChainHeadFeat f]
+getMainChainHeadFeat (Expr _ (Chain (f :| _) _) _) = [MainChainHeadFeat f]
+
+getMainChainTailFeats ∷ Item f → [MainChainTailFeats]
+getMainChainTailFeats (Expr _ (Chain (_ :| fs) _) _) = [MainChainTailFeats ∘ not ∘ null $ fs]
+
+getMoverLeftIdx ∷ Item f → [MoverLeftIdx f]
+getMoverLeftIdx (Expr _ _ mvrs) = assocToIdx <$> Map.assocs mvrs
+  where
+    assocToIdx (k, Chain _ (l,_)) = MoverLeftIdx (Licenser k, l)
+
+getMoverRightIdx ∷ Item f → [MoverRightIdx f]
+getMoverRightIdx (Expr _ _ mvrs) = assocToIdx <$> Map.assocs mvrs
+  where
+    assocToIdx (k, Chain _ (_,r)) = MoverRightIdx (Licenser k, r)
+
+getMoverHeadFeat ∷ Item f → [MoverHeadFeat f]
+getMoverHeadFeat (Expr _ _ mvrs) = MoverHeadFeat ∘ Licenser <$> Map.keys mvrs
+
+getMoverTailFeats ∷ Item f → [MoverTailFeats f]
+getMoverTailFeats (Expr _ _ mvrs) = assocToTail <$> Map.assocs mvrs
+  where
+    assocToTail (k, Chain (_ :| fs) _) = MoverTailFeats (Licenser k, not ∘ null $ fs)
+
+getMoversEmpty ∷ Item f → [MoversEmpty]
+getMoversEmpty (Expr _ _ mvrs) = [MoversEmpty ∘ Map.null $ mvrs]
+
+instance (Eq f, Ord f, Typeable f) ⇒ Ix.Indexable (Item f) where
+    empty = Ix.ixSet
+        [ Ix.ixFun getMainChainLeftIdx
+        , Ix.ixFun getMainChainRightIdx
+        , Ix.ixFun getExprType
+        , Ix.ixFun getMainChainHeadFeat
+        , Ix.ixFun getMainChainTailFeats
+        , Ix.ixFun getMoverLeftIdx
+        , Ix.ixFun getMoverRightIdx
+        , Ix.ixFun getMoverHeadFeat
+        , Ix.ixFun getMoverTailFeats
+        , Ix.ixFun getMoversEmpty
+        ]
+
+
+-------------------------------------------------------------------------------
+
+
+type Chart f = Ix.IxSet (Item f)
+
+initialChart ∷ (Eq f, Ord f, Typeable f) ⇒ ST s (STRef s (Chart f))
+initialChart = newSTRef Ix.empty
+
+isChartDone ∷ (Eq f, Ord f, Typeable f) ⇒ Chart f → f → Int → Bool
 isChartDone c f n = not ∘ null $ doneItems c f n
 
-doneItems ∷ (Eq f, Ord f) ⇒ Chart f → f → Int → [Item f]
-doneItems c f n = Set.toList parses
-  where
-    ls     = leftEdges  c Vector.! 0
-    rs     = rightEdges c Vector.! n
-    full   = Set.intersection ls rs
-    parses = Set.filter parseFilter full
-    parseFilter (Expr _ (Chain (Categorial f' :| []) _) mvrs)
-        = f ≡ f' ∧ Map.null mvrs
-    parseFilter _
-        = False
+doneItems ∷ (Eq f, Ord f, Typeable f) ⇒ Chart f → f → Int → [Item f]
+doneItems c f n = Ix.toList $
+    c @= MainChainLeftIdx  0
+      @= MainChainRightIdx n
+      @= MainChainHeadFeat (Categorial f)
+      @= MoversEmpty True
 
-addChartItem ∷ Ord f ⇒ Item f → Chart f → Chart f
-addChartItem i@(Expr _ (Chain _ (l,r)) _) c = Chart
-    { leftEdges  = le Vector.// [(l, Set.insert i $ le Vector.! l)]
-    , rightEdges = re Vector.// [(r, Set.insert i $ re Vector.! r)]
-    , allItems   = Set.insert i ai
-    }
-  where
-    le = leftEdges  c
-    re = rightEdges c
-    ai = allItems   c
+addChartItem ∷ (Eq f, Ord f, Typeable f) ⇒ Item f → Chart f → Chart f
+addChartItem = Ix.insert
 
 
 -------------------------------------------------------------------------------
@@ -159,7 +203,7 @@ initialForest g s =
 
 
 recognize
-    ∷ (Eq f, Ord f)
+    ∷ (Eq f, Ord f, Typeable f)
     ⇒ Grammar f T.Text
     → [T.Text]
     → Bool
@@ -169,19 +213,19 @@ recognize g s =
     chart = fst $ fillChart g s
 
 parse
-    ∷ (Eq f, Ord f)
+    ∷ (Eq f, Ord f, Typeable f)
     ⇒ Grammar f T.Text
     → [T.Text]
     → DerivForest f
 parse g s = snd $ fillChart g s
 
 fillChart
-    ∷ (Eq f, Ord f)
+    ∷ (Eq f, Ord f, Typeable f)
     ⇒ Grammar f T.Text
     → [T.Text]
     → (Chart f, DerivForest f)
 fillChart g s = runST $ do
-    chart  ← initialChart s
+    chart  ← initialChart
     forest ← newSTRef $ initialForest g s
     agenda ← newSTRef $ initialAgenda g s
     _ ← iterateUntil isEmptyAgenda $ do
@@ -194,7 +238,7 @@ fillChart g s = runST $ do
                    ⧺ merge3All chart' item
                    ⧺ move1 item
                    ⧺ move2 item
-        let isNewItem = \x → not ∘ Set.member x $ allItems chart'
+        let isNewItem = \x → not ∘ Set.member x $ Ix.toSet chart'
         let newItems  = List.filter isNewItem
                       ∘ List.delete item
                       ∘ map fst
@@ -207,15 +251,6 @@ fillChart g s = runST $ do
     forest' ← readSTRef forest
     return (chart', forest')
 
-itemsAtLeftEdge ∷ Ord f ⇒ Int → Chart f → [Item f]
-itemsAtLeftEdge n c = Set.toList $ leftEdges c Vector.! n
-
-itemsAtRightEdge ∷ Ord f ⇒ Int → Chart f → [Item f]
-itemsAtRightEdge n c = Set.toList $ rightEdges c Vector.! n
-
-itemsAnywhere ∷ Chart f → [Item f]
-itemsAnywhere = Set.toList . allItems
-
 type UnaryOp  f = Item f → [(Item f, DerivOp f)]
 type BinaryOp f = Item f → Item f → Maybe (Item f, DerivOp f)
 type BinaryContext f = Chart f → Item f → [(Item f, DerivOp f)]
@@ -225,9 +260,11 @@ flipNegFirst op i1@(Expr _ (Chain (f :| _) _) _) i2
     | pos f     = op i1 i2
     | otherwise = op i2 i1
 
-merge1All ∷ (Eq f, Ord f) ⇒ BinaryContext f
+merge1All ∷ (Eq f, Ord f, Typeable f) ⇒ BinaryContext f
 merge1All c i@(Expr _ (Chain _ (p,q)) _) =
-  mapMaybe (flipNegFirst merge1 i) $ itemsAtLeftEdge q c ⧺ itemsAtRightEdge p c
+    mapMaybe (flipNegFirst merge1 i) items
+  where
+    items = Ix.toList $ c @= MainChainLeftIdx q ||| c @= MainChainRightIdx p
 
 merge1 ∷ Eq f ⇒ BinaryOp f
 merge1 i1@(Expr SimplexExpr (Chain (Selectional f1 :| fs) (p,q1)) _)
@@ -237,9 +274,11 @@ merge1 i1@(Expr SimplexExpr (Chain (Selectional f1 :| fs) (p,q1)) _)
     = Just (Expr ComplexExpr (Chain (NonEmpty.fromList fs) (p,v)) mvrs, Merge1 i1 i2)
 merge1 _ _ = Nothing
 
-merge2All ∷ (Eq f, Ord f) ⇒ BinaryContext f
+merge2All ∷ (Eq f, Ord f, Typeable f) ⇒ BinaryContext f
 merge2All c i@(Expr _ (Chain _ (p,q)) _) =
-  mapMaybe (flipNegFirst merge2 i) $ itemsAtLeftEdge q c ⧺ itemsAtRightEdge p c
+    mapMaybe (flipNegFirst merge2 i) items
+  where
+    items = Ix.toList $ c @= MainChainLeftIdx q ||| c @= MainChainRightIdx p
 
 merge2 ∷ (Eq f, Ord f) ⇒ BinaryOp f
 merge2 i1@(Expr ComplexExpr (Chain (Selectional f1 :| fs) (p1,q)) mvrs1)
@@ -250,9 +289,11 @@ merge2 i1@(Expr ComplexExpr (Chain (Selectional f1 :| fs) (p1,q)) mvrs1)
     = Just (Expr ComplexExpr (Chain (NonEmpty.fromList fs) (v,q)) (Map.union mvrs1 mvrs2), Merge2 i1 i2)
 merge2 _ _ = Nothing
 
-merge3All ∷ (Eq f, Ord f) ⇒ BinaryContext f
+merge3All ∷ (Eq f, Ord f, Typeable f) ⇒ BinaryContext f
 merge3All c i =
-  mapMaybe (flipNegFirst merge3 i) $ itemsAnywhere c
+    mapMaybe (flipNegFirst merge3 i) items
+  where
+    items = Ix.toList c
 
 merge3 ∷ (Eq f, Ord f) ⇒ BinaryOp f
 merge3 i1@(Expr _ (Chain (Selectional f1 :| fs) (p,q)) mvrs1)
@@ -292,7 +333,7 @@ move2 _ = []
 
 
 showChart ∷ Chart T.Text → T.Text
-showChart = foldMap showItem ∘ Set.toList ∘ allItems
+showChart = foldMap showItem ∘ Ix.toList
 
 showItem ∷ Item T.Text → T.Text
 showItem (Expr SimplexExpr mainChain ms) =

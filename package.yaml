@@ -30,11 +30,12 @@ library:
     - base
     - base-unicode-symbols
     - compdata
-    - hashmap
     - containers
+    - hashmap
+    - ixset
     - megaparsec
-    - more-containers
     - monad-loops
+    - more-containers
     - parser-combinators
     - text
     - tree-view
