@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE RankNTypes           #-}
 
 module Text.MG.Parser.BottomUp
   ( recognize
@@ -251,22 +252,33 @@ fillChart g s = runST $ do
     forest' ← readSTRef forest
     return (chart', forest')
 
-type UnaryOp  f = Item f → [(Item f, DerivOp f)]
-type BinaryOp f = Item f → Item f → Maybe (Item f, DerivOp f)
-type BinaryContext f = Chart f → Item f → [(Item f, DerivOp f)]
+type UnaryOp
+    = ∀f. (Eq f, Ord f)
+    ⇒ Item f
+    → [(Item f, DerivOp f)]
+type BinaryOp
+    = ∀f. (Eq f, Ord f)
+    ⇒ Item f
+    → Item f
+    → Maybe (Item f, DerivOp f)
+type BinaryContext
+    = ∀f. (Eq f, Ord f, Typeable f)
+    ⇒ Chart f
+    → Item f
+    → [(Item f, DerivOp f)]
 
-flipNegFirst ∷ Eq f ⇒ BinaryOp f → BinaryOp f
+flipNegFirst ∷ BinaryOp → BinaryOp
 flipNegFirst op i1@(Expr _ (Chain (f :| _) _) _) i2
     | pos f     = op i1 i2
     | otherwise = op i2 i1
 
-merge1All ∷ (Eq f, Ord f, Typeable f) ⇒ BinaryContext f
+merge1All ∷ BinaryContext
 merge1All c i@(Expr _ (Chain _ (p,q)) _) =
     mapMaybe (flipNegFirst merge1 i) items
   where
     items = Ix.toList $ c @= MainChainLeftIdx q ||| c @= MainChainRightIdx p
 
-merge1 ∷ Eq f ⇒ BinaryOp f
+merge1 ∷ BinaryOp
 merge1 i1@(Expr SimplexExpr (Chain (Selectional f1 :| fs) (p,q1)) _)
        i2@(Expr _           (Chain (Categorial  f2 :| []) (q2,v)) mvrs)
   | f1 == f2
@@ -274,13 +286,13 @@ merge1 i1@(Expr SimplexExpr (Chain (Selectional f1 :| fs) (p,q1)) _)
     = Just (Expr ComplexExpr (Chain (NonEmpty.fromList fs) (p,v)) mvrs, Merge1 i1 i2)
 merge1 _ _ = Nothing
 
-merge2All ∷ (Eq f, Ord f, Typeable f) ⇒ BinaryContext f
+merge2All ∷ BinaryContext
 merge2All c i@(Expr _ (Chain _ (p,q)) _) =
     mapMaybe (flipNegFirst merge2 i) items
   where
     items = Ix.toList $ c @= MainChainLeftIdx q ||| c @= MainChainRightIdx p
 
-merge2 ∷ (Eq f, Ord f) ⇒ BinaryOp f
+merge2 ∷ BinaryOp
 merge2 i1@(Expr ComplexExpr (Chain (Selectional f1 :| fs) (p1,q)) mvrs1)
        i2@(Expr _           (Chain (Categorial  f2 :| []) (v,p2)) mvrs2)
   | f1 == f2
@@ -289,13 +301,13 @@ merge2 i1@(Expr ComplexExpr (Chain (Selectional f1 :| fs) (p1,q)) mvrs1)
     = Just (Expr ComplexExpr (Chain (NonEmpty.fromList fs) (v,q)) (Map.union mvrs1 mvrs2), Merge2 i1 i2)
 merge2 _ _ = Nothing
 
-merge3All ∷ (Eq f, Ord f, Typeable f) ⇒ BinaryContext f
+merge3All ∷ BinaryContext
 merge3All c i =
     mapMaybe (flipNegFirst merge3 i) items
   where
     items = Ix.toList c
 
-merge3 ∷ (Eq f, Ord f) ⇒ BinaryOp f
+merge3 ∷ BinaryOp
 merge3 i1@(Expr _ (Chain (Selectional f1 :| fs) (p,q)) mvrs1)
        i2@(Expr _ (Chain (Categorial  f2 :| (Licensee f:fs')) (v,w)) mvrs2)
   | f1 == f2
@@ -304,7 +316,7 @@ merge3 i1@(Expr _ (Chain (Selectional f1 :| fs) (p,q)) mvrs1)
     = Just (Expr ComplexExpr (Chain (NonEmpty.fromList fs) (p,q)) (Map.unions [mvrs1,mvrs2, Map.singleton f (Chain (Licensee f :| fs') (v,w))]), Merge3 i1 i2)
 merge3 _ _ = Nothing
 
-move1 ∷ (Eq f, Ord f) ⇒ UnaryOp f
+move1 ∷ UnaryOp
 move1 i@(Expr ComplexExpr (Chain (Licenser f :| fs) (p1,q)) mvrs)
     = [ (Expr ComplexExpr (Chain (NonEmpty.fromList fs) (v,q)) mvrs', Move1 i)
       | Chain fs' (v,p2) ← mvr
@@ -316,7 +328,7 @@ move1 i@(Expr ComplexExpr (Chain (Licenser f :| fs) (p1,q)) mvrs)
     mvrs' = f `Map.delete` mvrs
 move1 _ = []
 
-move2 ∷ (Eq f, Ord f) ⇒ UnaryOp f
+move2 ∷ UnaryOp
 move2 i@(Expr ComplexExpr (Chain (Licenser f :| fs) (p,q)) mvrs)
     = [ (Expr ComplexExpr (Chain (NonEmpty.fromList fs) (p,q)) $
         Map.insert (feat fs') (Chain (NonEmpty.fromList fs') (v,w)) mvrs', Move2 i)
