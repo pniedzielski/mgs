@@ -20,7 +20,7 @@ extra-source-files:
   - COPYING.LGPL.md
   - package.yaml
 
-ghc-options: -Wall -O3
+ghc-options: -Wall -O4
 default-extensions:
   - UnicodeSyntax
 
