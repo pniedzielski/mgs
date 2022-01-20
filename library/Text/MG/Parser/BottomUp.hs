@@ -271,6 +271,7 @@ flipNegFirst ∷ BinaryOp → BinaryOp
 flipNegFirst op i1@(Expr _ (Chain (f :| _) _) _) i2
     | pos f     = op i1 i2
     | otherwise = op i2 i1
+{-# INLINE flipNegFirst #-}
 
 merge1All ∷ BinaryContext
 merge1All c i@(Expr _ (Chain _ (p,q)) _) =
