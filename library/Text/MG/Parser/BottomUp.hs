@@ -303,10 +303,15 @@ merge2 i1@(Expr ComplexExpr (Chain (Selectional f1 :| fs) (p1,q)) mvrs1)
 merge2 _ _ = Nothing
 
 merge3All ∷ BinaryContext
-merge3All c i =
+merge3All c i@(Expr _ (Chain (Categorial f :| _) _) _) =
     mapMaybe (flipNegFirst merge3 i) items
   where
-    items = Ix.toList c
+    items = Ix.toList $ c @= MainChainHeadFeat (Selectional f)
+merge3All c i@(Expr _ (Chain (Selectional f :| _) _) _) =
+    mapMaybe (flipNegFirst merge3 i) items
+  where
+    items = Ix.toList $ c @= MainChainHeadFeat (Categorial f)
+merge3All _ _ = []
 
 merge3 ∷ BinaryOp
 merge3 i1@(Expr _ (Chain (Selectional f1 :| fs) (p,q)) mvrs1)
