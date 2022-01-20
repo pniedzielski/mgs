@@ -150,8 +150,8 @@ instance (Eq f, Ord f, Typeable f) ⇒ Ix.Indexable (Item f) where
 
 type Chart f = Ix.IxSet (Item f)
 
-initialChart ∷ (Eq f, Ord f, Typeable f) ⇒ ST s (STRef s (Chart f))
-initialChart = newSTRef Ix.empty
+initialChart ∷ (Eq f, Ord f, Typeable f) ⇒ Chart f
+initialChart = Ix.empty
 
 isChartDone ∷ (Eq f, Ord f, Typeable f) ⇒ Chart f → f → Int → Bool
 isChartDone c f n = not ∘ null $ doneItems c f n
@@ -226,7 +226,7 @@ fillChart
     → [T.Text]
     → (Chart f, DerivForest f)
 fillChart g s = runST $ do
-    chart  ← initialChart
+    chart  ← newSTRef $ initialChart
     forest ← newSTRef $ initialForest g s
     agenda ← newSTRef $ initialAgenda g s
     _ ← iterateUntil isEmptyAgenda $ do
