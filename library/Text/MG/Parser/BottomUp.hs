@@ -27,7 +27,7 @@ import Control.Monad.ST
 import Data.STRef
 import Control.Monad.Loops (iterateUntil)
 import qualified Data.IxSet as Ix
-import Data.IxSet ( (@=), (|||) )
+import Data.IxSet ( (@=), (|||), (&&&) )
 import Data.Maybe (fromJust, mapMaybe, maybeToList, isNothing)
 import qualified Data.List as List
 import qualified Data.Text as T
@@ -288,10 +288,15 @@ merge1 i1@(Expr SimplexExpr (Chain (Selectional f1 :| fs) (p,q1)) _)
 merge1 _ _ = Nothing
 
 merge2All ∷ BinaryContext
-merge2All c i@(Expr _ (Chain _ (p,q)) _) =
+merge2All c i@(Expr _ (Chain (Categorial f :| _) (p,q)) _) =
     mapMaybe (flipNegFirst merge2 i) items
   where
-    items = Ix.toList $ c @= MainChainLeftIdx q ||| c @= MainChainRightIdx p
+    items = Ix.toList $ c @= MainChainHeadFeat (Selectional f) &&& (c @= MainChainLeftIdx q ||| c @= MainChainRightIdx p)
+merge2All c i@(Expr _ (Chain (Selectional f :| _) (p,q)) _) =
+    mapMaybe (flipNegFirst merge2 i) items
+  where
+    items = Ix.toList $ c @= MainChainHeadFeat (Categorial f) &&& (c @= MainChainLeftIdx q ||| c @= MainChainRightIdx p)
+merge2All _ _ = []
 
 merge2 ∷ BinaryOp
 merge2 i1@(Expr ComplexExpr (Chain (Selectional f1 :| fs) (p1,q)) mvrs1)
