@@ -1,6 +1,8 @@
 `mgs`: Tools for working with Minimalist Grammars
 ===============================================================================
 
+[![Build Status](https://app.travis-ci.com/pniedzielski/mgs.svg?branch=master)](https://app.travis-ci.com/pniedzielski/mgs)
+
 This package contains parsers and other utilities for working with
 Minimalist Grammars (MGs) and related formalisms.  The goal for this
 package is to provide a high-quality, well-documented playground for
