@@ -23,6 +23,12 @@ ghc-options: -Wall -O4
 default-extensions:
   - UnicodeSyntax
 
+library:
+  source-dirs: library
+  dependencies:
+    - base
+    - base-unicode-symbols
+
 executables:
   mgs:
     source-dirs: executable
