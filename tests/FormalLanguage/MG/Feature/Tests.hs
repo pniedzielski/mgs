@@ -24,117 +24,29 @@ instance Arbitrary f ⇒ Arbitrary (Feature f) where
 -------------------------------------------------------------------------------
 tests ∷ TestTree
 tests = testGroup "FormalLanguage.MG.Feature"
-  [ testCategorial
-  , testSelectional
-  , testLicenser
-  , testLicensee
-  , testOrd
-  , testBounded
-  , testEnum
+  [ testFeature
   , testPolarity
   , testOperation
   , testMatching
   ]
 
 -------------------------------------------------------------------------------
-testCategorial ∷ TestTree
-testCategorial = testGroup "Categorial"
-  [ testCase "basicFeature" $ testCategorial_basicFeature "feat"
-  , testCase "polarity"     $ testCategorial_polarity "feat"
-  , testCase "operation"    $ testCategorial_operation "feat"
+testFeature ∷ TestTree
+testFeature = testGroup "Feature"
+  [ testFeatureLaws
+  , testCategorial
+  , testSelectional
+  , testLicenser
+  , testLicensee
   ]
-
-testCategorial_basicFeature ∷ (Eq f, Show f) ⇒ f → Assertion
-testCategorial_basicFeature f =
-  (basicFeature ∘ Categorial $ f) @=? f
-
-testCategorial_polarity ∷ f → Assertion
-testCategorial_polarity f =
-  (polarity ∘ Categorial $ f) @=? Neg
-
-testCategorial_operation ∷ f → Assertion
-testCategorial_operation f =
-  (operation ∘ Categorial $ f) @=? OpMerge
 
 -------------------------------------------------------------------------------
-testSelectional ∷ TestTree
-testSelectional = testGroup "Selectional"
-  [ testCase "basicFeature" $ testSelectional_basicFeature "feat"
-  , testCase "polarity"     $ testSelectional_polarity "feat"
-  , testCase "operation"    $ testSelectional_operation "feat"
+testFeatureLaws ∷ TestTree
+testFeatureLaws = testGroup "Typeclass Laws"
+  [ testOrd
+  , testBounded
+  , testEnum
   ]
-
-testSelectional_basicFeature ∷ (Eq f, Show f) ⇒ f → Assertion
-testSelectional_basicFeature f =
-  (basicFeature ∘ Selectional $ f) @=? f
-
-testSelectional_polarity ∷ f → Assertion
-testSelectional_polarity f =
-  (polarity ∘ Selectional $ f) @=? Pos
-
-testSelectional_operation ∷ f → Assertion
-testSelectional_operation f =
-  (operation ∘ Selectional $ f) @=? OpMerge
-
--------------------------------------------------------------------------------
-testLicenser ∷ TestTree
-testLicenser = testGroup "Licenser"
-  [ testCase "basicFeature" $ testLicenser_basicFeature "feat"
-  , testCase "polarity"     $ testLicenser_polarity "feat"
-  , testCase "operation"    $ testLicenser_operation "feat"
-  ]
-
-testLicenser_basicFeature ∷ (Eq f, Show f) ⇒ f → Assertion
-testLicenser_basicFeature f =
-  (basicFeature ∘ Licenser $ f) @=? f
-
-testLicenser_polarity ∷ f → Assertion
-testLicenser_polarity f =
-  (polarity ∘ Licenser $ f) @=? Pos
-
-testLicenser_operation ∷ f → Assertion
-testLicenser_operation f =
-  (operation ∘ Licenser $ f) @=? OpMove
-
--------------------------------------------------------------------------------
-testLicensee ∷ TestTree
-testLicensee = testGroup "Licensee"
-  [ testCase "basicFeature" $ testLicensee_basicFeature "feat"
-  , testCase "polarity"     $ testLicensee_polarity "feat"
-  , testCase "operation"    $ testLicensee_operation "feat"
-  ]
-
-testLicensee_basicFeature ∷ (Eq f, Show f) ⇒ f → Assertion
-testLicensee_basicFeature f =
-  (basicFeature ∘ Licensee $ f) @=? f
-
-testLicensee_polarity ∷ f → Assertion
-testLicensee_polarity f =
-  (polarity ∘ Licensee $ f) @=? Neg
-
-testLicensee_operation ∷ f → Assertion
-testLicensee_operation f =
-  (operation ∘ Licensee $ f) @=? OpMove
-
--------------------------------------------------------------------------------
-testPolarity ∷ TestTree
-testPolarity = testGroup "Polarity"
-  [ testProperty "Features are positive xor negative"
-      (propPosXorNeg ∷ Feature Integer → Bool)
-  , testProperty "Positive features have Pos polarity"
-      (propPos ∷ Feature Integer → Bool)
-  , testProperty "Negative features have Neg polarity"
-      (propNeg ∷ Feature Integer → Bool)
-  ]
-
-propPosXorNeg ∷ Feature f → Bool
-propPosXorNeg f = pos f ≢ neg f
-
-propPos ∷ Feature f → Bool
-propPos f = (polarity f ≡ Pos) ≡ pos f
-
-propNeg ∷ Feature f → Bool
-propNeg f = (polarity f ≡ Neg) ≡ neg f
 
 -------------------------------------------------------------------------------
 testOrd ∷ TestTree
@@ -238,6 +150,106 @@ propEnumFromMonotone ∷ (Ord f, Enum f) ⇒ Feature f → Feature f → Bool
 propEnumFromMonotone f1 f2
   | f1 ≤ f2   = fromEnum f1 ≤ fromEnum f2
   | otherwise = fromEnum f1 > fromEnum f2
+
+-------------------------------------------------------------------------------
+testCategorial ∷ TestTree
+testCategorial = testGroup "Categorial"
+  [ testCase "basicFeature" $ testCategorial_basicFeature "feat"
+  , testCase "polarity"     $ testCategorial_polarity "feat"
+  , testCase "operation"    $ testCategorial_operation "feat"
+  ]
+
+testCategorial_basicFeature ∷ (Eq f, Show f) ⇒ f → Assertion
+testCategorial_basicFeature f =
+  (basicFeature ∘ Categorial $ f) @=? f
+
+testCategorial_polarity ∷ f → Assertion
+testCategorial_polarity f =
+  (polarity ∘ Categorial $ f) @=? Neg
+
+testCategorial_operation ∷ f → Assertion
+testCategorial_operation f =
+  (operation ∘ Categorial $ f) @=? OpMerge
+
+-------------------------------------------------------------------------------
+testSelectional ∷ TestTree
+testSelectional = testGroup "Selectional"
+  [ testCase "basicFeature" $ testSelectional_basicFeature "feat"
+  , testCase "polarity"     $ testSelectional_polarity "feat"
+  , testCase "operation"    $ testSelectional_operation "feat"
+  ]
+
+testSelectional_basicFeature ∷ (Eq f, Show f) ⇒ f → Assertion
+testSelectional_basicFeature f =
+  (basicFeature ∘ Selectional $ f) @=? f
+
+testSelectional_polarity ∷ f → Assertion
+testSelectional_polarity f =
+  (polarity ∘ Selectional $ f) @=? Pos
+
+testSelectional_operation ∷ f → Assertion
+testSelectional_operation f =
+  (operation ∘ Selectional $ f) @=? OpMerge
+
+-------------------------------------------------------------------------------
+testLicenser ∷ TestTree
+testLicenser = testGroup "Licenser"
+  [ testCase "basicFeature" $ testLicenser_basicFeature "feat"
+  , testCase "polarity"     $ testLicenser_polarity "feat"
+  , testCase "operation"    $ testLicenser_operation "feat"
+  ]
+
+testLicenser_basicFeature ∷ (Eq f, Show f) ⇒ f → Assertion
+testLicenser_basicFeature f =
+  (basicFeature ∘ Licenser $ f) @=? f
+
+testLicenser_polarity ∷ f → Assertion
+testLicenser_polarity f =
+  (polarity ∘ Licenser $ f) @=? Pos
+
+testLicenser_operation ∷ f → Assertion
+testLicenser_operation f =
+  (operation ∘ Licenser $ f) @=? OpMove
+
+-------------------------------------------------------------------------------
+testLicensee ∷ TestTree
+testLicensee = testGroup "Licensee"
+  [ testCase "basicFeature" $ testLicensee_basicFeature "feat"
+  , testCase "polarity"     $ testLicensee_polarity "feat"
+  , testCase "operation"    $ testLicensee_operation "feat"
+  ]
+
+testLicensee_basicFeature ∷ (Eq f, Show f) ⇒ f → Assertion
+testLicensee_basicFeature f =
+  (basicFeature ∘ Licensee $ f) @=? f
+
+testLicensee_polarity ∷ f → Assertion
+testLicensee_polarity f =
+  (polarity ∘ Licensee $ f) @=? Neg
+
+testLicensee_operation ∷ f → Assertion
+testLicensee_operation f =
+  (operation ∘ Licensee $ f) @=? OpMove
+
+-------------------------------------------------------------------------------
+testPolarity ∷ TestTree
+testPolarity = testGroup "Polarity"
+  [ testProperty "Features are positive xor negative"
+      (propPosXorNeg ∷ Feature Integer → Bool)
+  , testProperty "Positive features have Pos polarity"
+      (propPos ∷ Feature Integer → Bool)
+  , testProperty "Negative features have Neg polarity"
+      (propNeg ∷ Feature Integer → Bool)
+  ]
+
+propPosXorNeg ∷ Feature f → Bool
+propPosXorNeg f = pos f ≢ neg f
+
+propPos ∷ Feature f → Bool
+propPos f = (polarity f ≡ Pos) ≡ pos f
+
+propNeg ∷ Feature f → Bool
+propNeg f = (polarity f ≡ Neg) ≡ neg f
 
 -------------------------------------------------------------------------------
 testOperation ∷ TestTree
