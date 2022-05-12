@@ -23,10 +23,13 @@
 -- in this package.
 
 module FormalLanguage.MG
-  ( -- * Bibliography
+  ( module FormalLanguage.MG.Feature
+    -- * Bibliography
     --
     -- $bibliography
   ) where
+
+import FormalLanguage.MG.Feature
 
 -- $bibliography
 --
