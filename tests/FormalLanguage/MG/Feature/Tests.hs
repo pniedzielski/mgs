@@ -3,11 +3,13 @@ module FormalLanguage.MG.Feature.Tests
     ( tests
     ) where
 
+import Data.Proxy (Proxy(Proxy))
 import FormalLanguage.MG.Feature
 import Prelude.Unicode
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
+import Test.Tasty.QuickCheck.Laws
 
 -------------------------------------------------------------------------------
 instance Arbitrary1 Feature where
@@ -20,6 +22,12 @@ instance Arbitrary1 Feature where
 instance Arbitrary f ⇒ Arbitrary (Feature f) where
   arbitrary = arbitrary1
   shrink    = shrink1
+
+instance Arbitrary (Polarity) where
+  arbitrary = elements [ Pos, Neg ]
+
+instance Arbitrary (Operation) where
+  arbitrary = elements [ OpMerge, OpMove ]
 
 -------------------------------------------------------------------------------
 tests ∷ TestTree
@@ -43,7 +51,10 @@ testFeature = testGroup "Feature"
 -------------------------------------------------------------------------------
 testFeatureLaws ∷ TestTree
 testFeatureLaws = testGroup "Typeclass Laws"
-  [ testOrd
+  [ testEqLaws (Proxy ∷ Proxy (Feature ()))
+  , testEqLaws (Proxy ∷ Proxy (Feature Bool))
+  , testEqLaws (Proxy ∷ Proxy (Feature String))
+  , testOrd
   , testBounded
   , testEnum
   ]
@@ -234,13 +245,18 @@ testLicensee_operation f =
 -------------------------------------------------------------------------------
 testPolarity ∷ TestTree
 testPolarity = testGroup "Polarity"
-  [ testProperty "Features are positive xor negative"
+  [ testPolarityLaws
+  , testProperty "Features are positive xor negative"
       (propPosXorNeg ∷ Feature Integer → Bool)
   , testProperty "Positive features have Pos polarity"
       (propPos ∷ Feature Integer → Bool)
   , testProperty "Negative features have Neg polarity"
       (propNeg ∷ Feature Integer → Bool)
   ]
+
+testPolarityLaws ∷ TestTree
+testPolarityLaws = testGroup "Typeclass Laws"
+  [ testEqLaws (Proxy ∷ Proxy Polarity) ]
 
 propPosXorNeg ∷ Feature f → Bool
 propPosXorNeg f = pos f ≢ neg f
@@ -254,13 +270,18 @@ propNeg f = (polarity f ≡ Neg) ≡ neg f
 -------------------------------------------------------------------------------
 testOperation ∷ TestTree
 testOperation = testGroup "Operation"
-  [ testProperty "Features are merge xor move"
+  [ testOperationLaws
+  , testProperty "Features are merge xor move"
       (propMoveXorMerge ∷ Feature Integer → Bool)
   , testProperty "Movement features have Move polarity"
       (propMove ∷ Feature Integer → Bool)
   , testProperty "Merge features have Merge polarity"
       (propMerge ∷ Feature Integer → Bool)
   ]
+
+testOperationLaws ∷ TestTree
+testOperationLaws = testGroup "Typeclass Laws"
+  [ testEqLaws (Proxy ∷ Proxy Operation) ]
 
 propMoveXorMerge ∷ Feature f → Bool
 propMoveXorMerge f = opMerge f ≢ opMove f

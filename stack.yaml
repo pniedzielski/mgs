@@ -3,4 +3,5 @@ resolver: lts-19.5
 packages:
 - .
 
-extra-deps: []
+extra-deps:
+- tasty-quickcheck-laws-0.0.3@sha256:a33a458e2a98feee96be41969382a63c9570fdbca262f07e56d6b4d0228b36cd,2105
