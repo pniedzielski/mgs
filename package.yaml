@@ -51,6 +51,7 @@ tests:
     - tasty
     - tasty-hunit
     - tasty-quickcheck
+    - tasty-quickcheck-laws
     ghc-options:
     - -rtsopts
     - -threaded
