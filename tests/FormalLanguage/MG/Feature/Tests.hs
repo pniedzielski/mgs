@@ -1,9 +1,11 @@
+{-# LANGUAGE ScopedTypeVariables  #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module FormalLanguage.MG.Feature.Tests
     ( tests
     ) where
 
 import Data.Proxy (Proxy(Proxy))
+import Data.Typeable (Typeable, typeRep)
 import FormalLanguage.MG.Feature
 import Prelude.Unicode
 import Test.Tasty
@@ -51,73 +53,211 @@ testFeature = testGroup "Feature"
 -------------------------------------------------------------------------------
 testFeatureLaws ∷ TestTree
 testFeatureLaws = testGroup "Typeclass Laws"
-  [ testEqLaws (Proxy ∷ Proxy (Feature ()))
-  , testEqLaws (Proxy ∷ Proxy (Feature Bool))
-  , testEqLaws (Proxy ∷ Proxy (Feature String))
-  , testOrd
+  [ testEqLaws  (Proxy ∷ Proxy (Feature ()))
+  , testEqLaws  (Proxy ∷ Proxy (Feature Bool))
+  , testEqLaws  (Proxy ∷ Proxy (Feature String))
+  , testOrdLaws (Proxy ∷ Proxy (Feature ()))
+  , testOrdLaws (Proxy ∷ Proxy (Feature Bool))
   , testBounded
   , testEnum
   ]
 
 -------------------------------------------------------------------------------
-testOrd ∷ TestTree
-testOrd = testGroup "Ord (Feature f)"
-  [ testProperty "Reflexivity"
-      (propOrdReflexive ∷ Feature Int → Bool)
-  , testProperty "Antisymmetric" -- Bool to reduce search space
-      (propOrdAntisymmetric ∷ Feature Bool → Feature Bool → Property)
-  , testProperty "Transitive"
-      (propOrdTransitive ∷ Feature Int → Feature Int → Feature Int → Property)
-  , testProperty "≥ is the dual of ≤"
-      (propLessEqualDual ∷ Feature Int → Feature Int → Bool)
-  , testProperty "< means ≤ and not ≡"
-      (propLessTrichotomy ∷ Feature Int → Feature Int → Bool)
-  , testProperty "> is the dual of <"
-      (propLessDual ∷ Feature Int → Feature Int → Bool)
-  , testProperty "< when compare returns LT"
-      (propLessIsLT ∷ Feature Int → Feature Int → Bool)
-  , testProperty "> when compare returns GT"
-      (propGreaterIsGT ∷ Feature Int → Feature Int → Bool)
-  , testProperty "≡ when compare returns EQ"
-      (propEqualIsEQ ∷ Feature Int → Feature Int → Bool)
-  , testProperty "min is the smaller of its arguments"
-      (propMin ∷ Feature Int → Feature Int → Bool)
-  , testProperty "max is the larger of its arguments"
-      (propMax ∷ Feature Int → Feature Int → Bool)
-  ]
+testOrdLaws
+  ∷ (Ord α, Show α, Arbitrary α, Typeable α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLaws pa =
+  let name = "Ord Laws for " ++ (show $ typeRep pa) in
+    testGroup name
+    [ testOrdLawReflexive      pa
+    , testOrdLawAntisymmetric  pa
+    , testOrdLawTransitive     pa
+    , testOrdLawLessEqualDual  pa
+    , testOrdLawLessTrichotomy pa
+    , testOrdLawLessDual       pa
+    , testOrdLawLessIsLT       pa
+    , testOrdLawGreaterIsGT    pa
+    , testOrdLawEqualIsEQ      pa
+    , testOrdLawMin            pa
+    , testOrdLawMax            pa
+    ]
 
-propOrdReflexive ∷ Ord f ⇒ Feature f → Bool
-propOrdReflexive f = f ≤ f
+-- | @a ≤ a@
+testOrdLawReflexive
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawReflexive pa =
+  testProperty "a ≤ a" $
+    ordLawReflexive pa
 
-propOrdAntisymmetric ∷ Ord f ⇒ Feature f → Feature f → Property
-propOrdAntisymmetric f1 f2 = f1 ≤ f2 ∧ f1 ≥ f2 ==> f1 ≡ f2
+ordLawReflexive
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → Bool
+ordLawReflexive _ a =
+  a ≤ a
 
-propOrdTransitive ∷ Ord f ⇒ Feature f → Feature f → Feature f → Property
-propOrdTransitive f1 f2 f3 = f1 ≤ f2 ∧ f2 ≤ f3 ==> f1 ≤ f3
+-- | @a ≤ b ∧ a ≥ b ==> a ≡ b@
+testOrdLawAntisymmetric
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawAntisymmetric pa =
+  testProperty "a ≤ b ∧ a ≥ b ==> a ≡ b" $
+    ordLawAntisymmetric pa
 
-propLessEqualDual ∷ Ord f ⇒ Feature f → Feature f → Bool
-propLessEqualDual f1 f2 = (f1 ≥ f2) ≡ (f2 ≤ f1)
+ordLawAntisymmetric
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → α → Property
+ordLawAntisymmetric _ a b =
+  a ≤ b ∧ a ≥ b ==> a ≡ b
 
-propLessTrichotomy ∷ Ord f ⇒ Feature f → Feature f → Bool
-propLessTrichotomy f1 f2 = (f1 < f2) ≡ (f1 ≤ f2 ∧ f1 ≢ f2)
+-- | @a ≤ b ∧ b ≤ c ==> a ≤ c@
+testOrdLawTransitive
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawTransitive pa =
+  testProperty "a ≤ b ∧ b ≤ c ==> a ≤ c" $
+    ordLawTransitive pa
 
-propLessDual ∷ Ord f ⇒ Feature f → Feature f → Bool
-propLessDual f1 f2 = (f1 > f2) ≡ (f2 < f1)
+ordLawTransitive
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → α → α → Property
+ordLawTransitive _ a b c =
+  a ≤ b ∧ b ≤ c ==> a ≤ c
 
-propLessIsLT ∷ Ord f ⇒ Feature f → Feature f → Bool
-propLessIsLT f1 f2 = (f1 < f2) ≡ (f1 `compare` f2 ≡ LT)
+-- | @(a ≥ b) ≡ (b ≤ a)@
+testOrdLawLessEqualDual
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawLessEqualDual pa =
+  testProperty "(a ≥ b) ≡ (b ≤ a)" $
+    ordLawLessEqualDual pa
 
-propGreaterIsGT ∷ Ord f ⇒ Feature f → Feature f → Bool
-propGreaterIsGT f1 f2 = (f1 > f2) ≡ (f1 `compare` f2 ≡ GT)
+ordLawLessEqualDual
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → α → Bool
+ordLawLessEqualDual _ a b =
+  (a ≥ b) ≡ (b ≤ a)
 
-propEqualIsEQ ∷ Ord f ⇒ Feature f → Feature f → Bool
-propEqualIsEQ f1 f2 = (f1 ≡ f2) ≡ (f1 `compare` f2 ≡ EQ)
+-- | @(a < b) ≡ (a ≤ b ∧ a ≢ b)@
+testOrdLawLessTrichotomy
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawLessTrichotomy pa =
+  testProperty "(a < b) ≡ (a ≤ b ∧ a ≢ b)" $
+    ordLawLessTrichotomy pa
 
-propMin ∷ Ord f ⇒ Feature f → Feature f → Bool
-propMin f1 f2 = f1 `min` f2 ≡ if f1 ≤ f2 then f1 else f2
+ordLawLessTrichotomy
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → α → Bool
+ordLawLessTrichotomy _ a b =
+  (a < b) ≡ (a ≤ b ∧ a ≢ b)
 
-propMax ∷ Ord f ⇒ Feature f → Feature f → Bool
-propMax f1 f2 = f1 `max` f2 ≡ if f1 ≥ f2 then f1 else f2
+-- | @(a > b) ≡ (b < a)@
+testOrdLawLessDual
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawLessDual pa =
+  testProperty "(a > b) ≡ (b < a)" $
+    ordLawLessDual pa
+
+ordLawLessDual
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → α → Bool
+ordLawLessDual _ a b =
+  (a > b) ≡ (b < a)
+
+-- | @(a < b) ≡ (a `compare` b ≡ LT)@
+testOrdLawLessIsLT
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawLessIsLT pa =
+  testProperty "(a < b) ≡ (a `compare` b ≡ LT)" $
+    ordLawLessIsLT pa
+
+ordLawLessIsLT
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → α → Bool
+ordLawLessIsLT _ a b =
+  (a < b) ≡ (a `compare` b ≡ LT)
+
+-- | @(a > b) ≡ (a `compare` b ≡ GT)@
+testOrdLawGreaterIsGT
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawGreaterIsGT pa =
+  testProperty "(a > b) ≡ (a `compare` b ≡ GT)" $
+    ordLawGreaterIsGT pa
+
+ordLawGreaterIsGT
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → α → Bool
+ordLawGreaterIsGT _ a b =
+  (a > b) ≡ (a `compare` b ≡ GT)
+
+-- | @(a ≡ b) ≡ (a `compare` b ≡ EQ)@
+testOrdLawEqualIsEQ
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawEqualIsEQ pa =
+  testProperty "(a ≡ b) ≡ (a `compare` b ≡ EQ)" $
+    ordLawEqualIsEQ pa
+
+ordLawEqualIsEQ
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → α → Bool
+ordLawEqualIsEQ _ a b =
+  (a ≡ b) ≡ (a `compare` b ≡ EQ)
+
+-- | @a `min` b ≡ if a ≤ b then a else b@
+testOrdLawMin
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawMin pa =
+  testProperty "a `min` b ≡ if a ≤ b then a else b" $
+    ordLawMin pa
+
+ordLawMin
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → α → Bool
+ordLawMin _ a b =
+  a `min` b ≡ if a ≤ b then a else b
+
+-- | @a `max` b ≡ if a ≥ b then a else b@
+testOrdLawMax
+  ∷ (Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testOrdLawMax pa =
+  testProperty "a `max` b ≡ if a ≥ b then a else b" $
+    ordLawMax pa
+
+ordLawMax
+  ∷ Ord α
+  ⇒ Proxy α
+  → α → α → Bool
+ordLawMax _ a b =
+  a `max` b ≡ if a ≥ b then a else b
 
 -------------------------------------------------------------------------------
 testBounded ∷ TestTree
@@ -256,7 +396,9 @@ testPolarity = testGroup "Polarity"
 
 testPolarityLaws ∷ TestTree
 testPolarityLaws = testGroup "Typeclass Laws"
-  [ testEqLaws (Proxy ∷ Proxy Polarity) ]
+  [ testEqLaws  (Proxy ∷ Proxy Polarity)
+  , testOrdLaws (Proxy ∷ Proxy Polarity)
+  ]
 
 propPosXorNeg ∷ Feature f → Bool
 propPosXorNeg f = pos f ≢ neg f
@@ -281,7 +423,9 @@ testOperation = testGroup "Operation"
 
 testOperationLaws ∷ TestTree
 testOperationLaws = testGroup "Typeclass Laws"
-  [ testEqLaws (Proxy ∷ Proxy Operation) ]
+  [ testEqLaws  (Proxy ∷ Proxy Operation)
+  , testOrdLaws (Proxy ∷ Proxy Operation)
+  ]
 
 propMoveXorMerge ∷ Feature f → Bool
 propMoveXorMerge f = opMerge f ≢ opMove f
