@@ -1,11 +1,9 @@
-{-# LANGUAGE ScopedTypeVariables  #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module FormalLanguage.MG.Feature.Tests
     ( tests
     ) where
 
 import Data.Proxy (Proxy(Proxy))
-import Data.Typeable (Typeable, typeRep)
 import FormalLanguage.MG.Feature
 import Prelude.Unicode
 import Test.Tasty
@@ -13,6 +11,7 @@ import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import Test.Tasty.QuickCheck.Laws
 import Test.Tasty.QuickCheck.Laws.Ord
+import Test.Tasty.QuickCheck.Laws.BoundedOrd
 
 -------------------------------------------------------------------------------
 instance Arbitrary1 Feature where
@@ -59,29 +58,11 @@ testFeatureLaws = testGroup "Typeclass Laws"
   , testEqLaws  (Proxy ∷ Proxy (Feature String))
   , testOrdLaws (Proxy ∷ Proxy (Feature ()))
   , testOrdLaws (Proxy ∷ Proxy (Feature Bool))
-  , testBounded
+  , testBoundedOrdLaws (Proxy ∷ Proxy (Feature ()))
+  , testBoundedOrdLaws (Proxy ∷ Proxy (Feature Bool))
+  , testBoundedOrdLaws (Proxy ∷ Proxy (Feature Int))
   , testEnum
   ]
-
--------------------------------------------------------------------------------
-testBounded ∷ TestTree
-testBounded = testGroup "Bounded (Feature f)"
-  [ testCase "minBound < maxBound" testMinLessMax
-  , testProperty "maxBound is the largest value"
-      (propMaxBoundMax ∷ Feature Int → Bool)
-  , testProperty "minBound is the smallest value"
-      (propMinBoundMin ∷ Feature Int → Bool)
-  ]
-
-testMinLessMax ∷ Assertion
-testMinLessMax =
-  (minBound ∷ Feature Int) < (maxBound ∷ Feature Int) @? "minBound ≥ maxBound"
-
-propMaxBoundMax ∷ (Ord f, Bounded f) ⇒ Feature f → Bool
-propMaxBoundMax f = f ≤ maxBound
-
-propMinBoundMin ∷ (Ord f, Bounded f) ⇒ Feature f → Bool
-propMinBoundMin f = f ≥ minBound
 
 -------------------------------------------------------------------------------
 testEnum ∷ TestTree
@@ -200,8 +181,9 @@ testPolarity = testGroup "Polarity"
 
 testPolarityLaws ∷ TestTree
 testPolarityLaws = testGroup "Typeclass Laws"
-  [ testEqLaws  (Proxy ∷ Proxy Polarity)
-  , testOrdLaws (Proxy ∷ Proxy Polarity)
+  [ testEqLaws         (Proxy ∷ Proxy Polarity)
+  , testOrdLaws        (Proxy ∷ Proxy Polarity)
+  , testBoundedOrdLaws (Proxy ∷ Proxy Polarity)
   ]
 
 propPosXorNeg ∷ Feature f → Bool
@@ -227,8 +209,9 @@ testOperation = testGroup "Operation"
 
 testOperationLaws ∷ TestTree
 testOperationLaws = testGroup "Typeclass Laws"
-  [ testEqLaws  (Proxy ∷ Proxy Operation)
-  , testOrdLaws (Proxy ∷ Proxy Operation)
+  [ testEqLaws         (Proxy ∷ Proxy Operation)
+  , testOrdLaws        (Proxy ∷ Proxy Operation)
+  , testBoundedOrdLaws (Proxy ∷ Proxy Operation)
   ]
 
 propMoveXorMerge ∷ Feature f → Bool
