@@ -181,9 +181,9 @@ basicFeature (Licenser    f) = f
 
 -- | The polarity of a role-annotated feature.
 data Polarity
-  = Pos  -- ^ Positive featural polarity
-  | Neg  -- ^ Negative featural polarity
-  deriving (Eq, Ord, Show, Read)
+  = Neg  -- ^ Negative featural polarity
+  | Pos  -- ^ Positive featural polarity
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 -- | Return the polarity of a role-annotated feature.
 polarity ∷ Feature f → Polarity
@@ -211,7 +211,7 @@ neg = (≡ Neg) ∘ polarity
 data Operation
   = OpMerge  -- ^ Merge driven by some feature
   | OpMove   -- ^ Move driven by some feature
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Show, Read, Bounded, Enum)
 
 -- | Return the operation that a role-annotated feature drives.
 operation ∷ Feature f → Operation
