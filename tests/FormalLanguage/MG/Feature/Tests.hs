@@ -1,15 +1,18 @@
+{-# LANGUAGE ScopedTypeVariables  #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module FormalLanguage.MG.Feature.Tests
     ( tests
     ) where
 
 import Data.Proxy (Proxy(Proxy))
+import Data.Typeable (Typeable, typeRep)
 import FormalLanguage.MG.Feature
 import Prelude.Unicode
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import Test.Tasty.QuickCheck.Laws
+import Test.Tasty.QuickCheck.Laws.Ord
 
 -------------------------------------------------------------------------------
 instance Arbitrary1 Feature where
@@ -51,73 +54,14 @@ testFeature = testGroup "Feature"
 -------------------------------------------------------------------------------
 testFeatureLaws ∷ TestTree
 testFeatureLaws = testGroup "Typeclass Laws"
-  [ testEqLaws (Proxy ∷ Proxy (Feature ()))
-  , testEqLaws (Proxy ∷ Proxy (Feature Bool))
-  , testEqLaws (Proxy ∷ Proxy (Feature String))
-  , testOrd
+  [ testEqLaws  (Proxy ∷ Proxy (Feature ()))
+  , testEqLaws  (Proxy ∷ Proxy (Feature Bool))
+  , testEqLaws  (Proxy ∷ Proxy (Feature String))
+  , testOrdLaws (Proxy ∷ Proxy (Feature ()))
+  , testOrdLaws (Proxy ∷ Proxy (Feature Bool))
   , testBounded
   , testEnum
   ]
-
--------------------------------------------------------------------------------
-testOrd ∷ TestTree
-testOrd = testGroup "Ord (Feature f)"
-  [ testProperty "Reflexivity"
-      (propOrdReflexive ∷ Feature Int → Bool)
-  , testProperty "Antisymmetric" -- Bool to reduce search space
-      (propOrdAntisymmetric ∷ Feature Bool → Feature Bool → Property)
-  , testProperty "Transitive"
-      (propOrdTransitive ∷ Feature Int → Feature Int → Feature Int → Property)
-  , testProperty "≥ is the dual of ≤"
-      (propLessEqualDual ∷ Feature Int → Feature Int → Bool)
-  , testProperty "< means ≤ and not ≡"
-      (propLessTrichotomy ∷ Feature Int → Feature Int → Bool)
-  , testProperty "> is the dual of <"
-      (propLessDual ∷ Feature Int → Feature Int → Bool)
-  , testProperty "< when compare returns LT"
-      (propLessIsLT ∷ Feature Int → Feature Int → Bool)
-  , testProperty "> when compare returns GT"
-      (propGreaterIsGT ∷ Feature Int → Feature Int → Bool)
-  , testProperty "≡ when compare returns EQ"
-      (propEqualIsEQ ∷ Feature Int → Feature Int → Bool)
-  , testProperty "min is the smaller of its arguments"
-      (propMin ∷ Feature Int → Feature Int → Bool)
-  , testProperty "max is the larger of its arguments"
-      (propMax ∷ Feature Int → Feature Int → Bool)
-  ]
-
-propOrdReflexive ∷ Ord f ⇒ Feature f → Bool
-propOrdReflexive f = f ≤ f
-
-propOrdAntisymmetric ∷ Ord f ⇒ Feature f → Feature f → Property
-propOrdAntisymmetric f1 f2 = f1 ≤ f2 ∧ f1 ≥ f2 ==> f1 ≡ f2
-
-propOrdTransitive ∷ Ord f ⇒ Feature f → Feature f → Feature f → Property
-propOrdTransitive f1 f2 f3 = f1 ≤ f2 ∧ f2 ≤ f3 ==> f1 ≤ f3
-
-propLessEqualDual ∷ Ord f ⇒ Feature f → Feature f → Bool
-propLessEqualDual f1 f2 = (f1 ≥ f2) ≡ (f2 ≤ f1)
-
-propLessTrichotomy ∷ Ord f ⇒ Feature f → Feature f → Bool
-propLessTrichotomy f1 f2 = (f1 < f2) ≡ (f1 ≤ f2 ∧ f1 ≢ f2)
-
-propLessDual ∷ Ord f ⇒ Feature f → Feature f → Bool
-propLessDual f1 f2 = (f1 > f2) ≡ (f2 < f1)
-
-propLessIsLT ∷ Ord f ⇒ Feature f → Feature f → Bool
-propLessIsLT f1 f2 = (f1 < f2) ≡ (f1 `compare` f2 ≡ LT)
-
-propGreaterIsGT ∷ Ord f ⇒ Feature f → Feature f → Bool
-propGreaterIsGT f1 f2 = (f1 > f2) ≡ (f1 `compare` f2 ≡ GT)
-
-propEqualIsEQ ∷ Ord f ⇒ Feature f → Feature f → Bool
-propEqualIsEQ f1 f2 = (f1 ≡ f2) ≡ (f1 `compare` f2 ≡ EQ)
-
-propMin ∷ Ord f ⇒ Feature f → Feature f → Bool
-propMin f1 f2 = f1 `min` f2 ≡ if f1 ≤ f2 then f1 else f2
-
-propMax ∷ Ord f ⇒ Feature f → Feature f → Bool
-propMax f1 f2 = f1 `max` f2 ≡ if f1 ≥ f2 then f1 else f2
 
 -------------------------------------------------------------------------------
 testBounded ∷ TestTree
@@ -256,7 +200,9 @@ testPolarity = testGroup "Polarity"
 
 testPolarityLaws ∷ TestTree
 testPolarityLaws = testGroup "Typeclass Laws"
-  [ testEqLaws (Proxy ∷ Proxy Polarity) ]
+  [ testEqLaws  (Proxy ∷ Proxy Polarity)
+  , testOrdLaws (Proxy ∷ Proxy Polarity)
+  ]
 
 propPosXorNeg ∷ Feature f → Bool
 propPosXorNeg f = pos f ≢ neg f
@@ -281,7 +227,9 @@ testOperation = testGroup "Operation"
 
 testOperationLaws ∷ TestTree
 testOperationLaws = testGroup "Typeclass Laws"
-  [ testEqLaws (Proxy ∷ Proxy Operation) ]
+  [ testEqLaws  (Proxy ∷ Proxy Operation)
+  , testOrdLaws (Proxy ∷ Proxy Operation)
+  ]
 
 propMoveXorMerge ∷ Feature f → Bool
 propMoveXorMerge f = opMerge f ≢ opMove f
