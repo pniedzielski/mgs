@@ -59,6 +59,9 @@ testFeatureLaws = testGroup "Typeclass Laws"
   , testOrdLaws (Proxy ∷ Proxy (Feature ()))
   , testOrdLaws (Proxy ∷ Proxy (Feature Bool))
   , testBounded
+  , testBoundedOrdLaws (Proxy ∷ Proxy (Feature ()))
+  , testBoundedOrdLaws (Proxy ∷ Proxy (Feature Bool))
+  , testBoundedOrdLaws (Proxy ∷ Proxy (Feature Int))
   , testEnum
   ]
 
@@ -260,24 +263,62 @@ ordLawMax _ a b =
   a `max` b ≡ if a ≥ b then a else b
 
 -------------------------------------------------------------------------------
-testBounded ∷ TestTree
-testBounded = testGroup "Bounded (Feature f)"
-  [ testCase "minBound < maxBound" testMinLessMax
-  , testProperty "maxBound is the largest value"
-      (propMaxBoundMax ∷ Feature Int → Bool)
-  , testProperty "minBound is the smallest value"
-      (propMinBoundMin ∷ Feature Int → Bool)
-  ]
+testBoundedOrdLaws
+  ∷ (Bounded α, Ord α, Show α, Arbitrary α, Typeable α)
+  ⇒ Proxy α
+  → TestTree
+testBoundedOrdLaws pa =
+  let name = "Bounded and Ord Laws for " ++ (show $ typeRep pa) in
+    testGroup name
+    [ testBoundedOrdLawMinLessMax  pa
+    , testBoundedOrdLawMaxBoundMax pa
+    , testBoundedOrdLawMinBoundMin pa
+    ]
 
-testMinLessMax ∷ Assertion
-testMinLessMax =
-  (minBound ∷ Feature Int) < (maxBound ∷ Feature Int) @? "minBound ≥ maxBound"
+testBoundedOrdLawMinLessMax
+  ∷ (Bounded α, Ord α, Show α)
+  ⇒ Proxy α
+  → TestTree
+testBoundedOrdLawMinLessMax pa =
+  testCase "minBound ≤ maxBound" $
+    boundedOrdLawMinLessMax pa @? "minBound > maxBound"
 
-propMaxBoundMax ∷ (Ord f, Bounded f) ⇒ Feature f → Bool
-propMaxBoundMax f = f ≤ maxBound
+boundedOrdLawMinLessMax
+  ∷ ∀α. (Bounded α, Ord α)
+  ⇒ Proxy α
+  → Bool
+boundedOrdLawMinLessMax _ =
+  (minBound ∷ α) ≤ (maxBound ∷ α)
 
-propMinBoundMin ∷ (Ord f, Bounded f) ⇒ Feature f → Bool
-propMinBoundMin f = f ≥ minBound
+testBoundedOrdLawMaxBoundMax
+  ∷ (Bounded α, Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testBoundedOrdLawMaxBoundMax pa =
+  testProperty "a ≤ maxBound" $
+    boundedOrdLawMaxBoundMax pa
+
+boundedOrdLawMaxBoundMax
+  ∷ (Bounded α, Ord α)
+  ⇒ Proxy α
+  → α → Bool
+boundedOrdLawMaxBoundMax _ a =
+  a ≤ maxBound
+
+testBoundedOrdLawMinBoundMin
+  ∷ (Bounded α, Ord α, Show α, Arbitrary α)
+  ⇒ Proxy α
+  → TestTree
+testBoundedOrdLawMinBoundMin pa =
+  testProperty "minBound ≤ a" $
+    boundedOrdLawMinBoundMin pa
+
+boundedOrdLawMinBoundMin
+  ∷ (Bounded α, Ord α)
+  ⇒ Proxy α
+  → α → Bool
+boundedOrdLawMinBoundMin _ a =
+  minBound ≤ a
 
 -------------------------------------------------------------------------------
 testEnum ∷ TestTree
