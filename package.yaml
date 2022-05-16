@@ -50,6 +50,7 @@ tests:
     - mgs
     - tasty
     - tasty-hunit
+    - tasty-travis
     - tasty-quickcheck
     - tasty-quickcheck-laws
     ghc-options:

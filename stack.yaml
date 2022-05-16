@@ -5,3 +5,4 @@ packages:
 
 extra-deps:
 - tasty-quickcheck-laws-0.0.3@sha256:a33a458e2a98feee96be41969382a63c9570fdbca262f07e56d6b4d0228b36cd,2105
+- tasty-travis-0.2.0.2@sha256:f305482563c6ca16764d3d866f0d177bc1415129024775ec3e31bc11f7bc36d4,2069
